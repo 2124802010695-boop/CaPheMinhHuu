@@ -3,4 +3,9 @@ bin/
 obj/ 
 .vs/ 
 *.user 
+*.docx
+*.mpp
+*.csv
+*.zip
+stitch_giao_di_n_b_n_h_ng_ch_nh/
 appsettings.Development.json 
