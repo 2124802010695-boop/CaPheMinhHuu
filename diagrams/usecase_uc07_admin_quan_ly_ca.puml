@@ -1,0 +1,57 @@
+@startuml UC07_QuanLyCa
+title UC07: Quản lý Ca làm việc (Admin) - Chi tiết
+
+actor "Admin" as admin
+
+rectangle "UC07: Quản lý Ca làm việc" {
+  usecase "Vào menu\nQuản lý Ca" as UC07_1
+  usecase "Xem danh sách\ntất cả ca" as UC07_2
+  usecase "Lọc theo\nngày/nhân viên" as UC07_3
+  usecase "Xem chi tiết\nca" as UC07_4
+  usecase "Xem danh sách\nđơn hàng trong ca" as UC07_5
+  usecase "Đóng ca thay\nnhân viên" as UC07_6
+  usecase "Xem báo cáo\ntổng hợp" as UC07_7
+}
+
+admin --> UC07_1
+UC07_1 ..> UC07_2 : <<include>>
+admin --> UC07_3 : <<extend>>
+admin --> UC07_4
+UC07_4 --> UC07_5
+admin --> UC07_6 : <<extend>>
+admin --> UC07_7 : <<extend>>
+
+note right of UC07_2
+  **Hiển thị:**
+  - STT
+  - Nhân viên
+  - Thời gian mở/đóng
+  - Doanh thu
+  - Trạng thái (Open/Closed)
+end note
+
+note right of UC07_4
+  **Chi tiết ca:**
+  - Thông tin nhân viên
+  - Tiền đầu ca/cuối ca
+  - Doanh thu ca
+  - Chênh lệch
+  - Ghi chú
+end note
+
+note bottom of UC07_6
+  **Đóng ca thay:**
+  - Chỉ Admin mới có quyền
+  - Ghi log hành động
+  - Gửi thông báo cho nhân viên
+end note
+
+note right of UC07_7
+  **Báo cáo tổng hợp:**
+  - Tổng doanh thu tất cả ca
+  - Trung bình doanh thu/ca
+  - Nhân viên xuất sắc
+  - Tổng chênh lệch
+end note
+
+@enduml

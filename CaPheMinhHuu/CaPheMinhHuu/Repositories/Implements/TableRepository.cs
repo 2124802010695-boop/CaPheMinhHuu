@@ -1,0 +1,44 @@
+﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Interfaces;
+using CaPheMinhHuu.Models;
+using Microsoft.EntityFrameworkCore;
+namespace CaPheMinhHuu.Repositories.Implements
+{
+    public class TableRepository : ITableRepository
+    {
+        private readonly ApplicationDbContext _context;
+        public TableRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+        public async Task<IEnumerable<Table>> GetAllAsync()
+        {
+            return await _context.Tables
+                .Where(t => !t.IsDeleted)
+                .ToListAsync();
+        }
+        public async Task<Table?> GetByIdAsync(int id)
+        {
+            return await _context.Tables
+                .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+        }
+        public async Task<Table> CreateAsync(Table table)
+        {
+            await _context.Tables.AddAsync(table);
+            await _context.SaveChangesAsync();
+            return table;
+        }
+        public async Task UpdateAsync(Table table)
+        {
+            _context.Tables.Update(table);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteAsync(int id)
+        {
+            var table = await GetByIdAsync(id);
+            if (table == null) throw new Exception("Table not found");
+            table.IsDeleted = true;
+            await _context.SaveChangesAsync();
+        }
+    }
+}

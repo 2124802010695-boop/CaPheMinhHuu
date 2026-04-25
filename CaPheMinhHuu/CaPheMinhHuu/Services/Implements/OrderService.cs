@@ -1,0 +1,119 @@
+using CaPheMinhHuu.Data;
+using CaPheMinhHuu.DTOs.Ingredient;
+using CaPheMinhHuu.DTOs.Order;
+using CaPheMinhHuu.Hubs;
+using CaPheMinhHuu.Interfaces;
+using CaPheMinhHuu.Models;
+using Microsoft.AspNetCore.SignalR;
+namespace CaPheMinhHuu.Services.Implements
+
+
+{
+    public class OrderService : IOrderService
+    {
+        private readonly IOrderRepository _orderRepository;
+        private readonly IProductRepository _productRepository;
+        private readonly IHubContext<KitchenHub> _hubContext;
+        private readonly IIngredientService _ingredientService;
+        private readonly ApplicationDbContext _context;
+        public OrderService(
+            IOrderRepository orderRepository,
+            IProductRepository productRepository,
+            IHubContext<KitchenHub> hubContext,
+            IIngredientService ingredientService,
+            ApplicationDbContext context)
+        {
+            _orderRepository = orderRepository;
+            _productRepository = productRepository;
+            _hubContext = hubContext;
+            _ingredientService = ingredientService;
+            _context = context;
+        }
+        public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId)
+        {
+            var stockCheck = await _ingredientService.CheckStockForOrderAsync(dto.Items);
+            if (!stockCheck.IsAvailable)
+            {
+                var info = string.Join(", ", stockCheck.Shortages.Select(
+                    s => $"{s.IngredientName}: cần {s.Required}, còn {s.Available}"));
+                throw new InvalidOperationException($"Không đủ nguyên liệu: {info}");
+            }
+            var order = new Order
+            {
+                UserId = userId,
+                CustomerName = dto.CustomerName,
+                Phone = dto.Phone,
+                Address = dto.Address ?? "",
+                PaymentMethod = dto.PaymentMethod,
+                TableNumber = dto.TableNumber,
+                OrderDate = DateTime.Now,
+                Status = "Pending"
+            };
+            decimal totalAmount = 0;
+            var orderItems = new List<OrderItem>();
+            foreach (var item in dto.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null)
+                    throw new InvalidOperationException($"Sản phẩm ID {item.ProductId} không tồn tại");
+                var orderItem = new OrderItem
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    PriceAtOrder = product.Price
+                };
+                orderItems.Add(orderItem);
+                totalAmount += product.Price * item.Quantity;
+            }
+            order.OrderItems = orderItems;
+            order.TotalAmount = totalAmount;
+            var createdOrder = await _orderRepository.CreateAsync(order);
+            await _ingredientService.DeductStockForOrderAsync(dto.Items);
+            await _hubContext.Clients.All.SendAsync("ReceiveNewOrder", createdOrder);
+            return await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
+        }
+        public async Task<OrderViewDto?> GetOrderByIdAsync(int id)
+        {
+            var order = await _orderRepository.GetByIdAsync(id);
+            if (order == null) return null;
+            return new OrderViewDto
+            {
+                Id = order.Id,
+                CustomerName = order.CustomerName,
+                Phone = order.Phone,
+                TotalAmount = order.TotalAmount,
+                Status = order.Status,
+                OrderDate = order.OrderDate,
+                PaymentMethod = order.PaymentMethod,
+                TableNumber = order.TableNumber,
+                Items = order.OrderItems.Select(oi => new OrderItemViewDto
+                {
+                    ProductId = oi.ProductId,
+                    ProductName = oi.Product.Name,
+                    Quantity = oi.Quantity,
+                    PriceAtOrder = oi.PriceAtOrder,
+                    Subtotal = oi.PriceAtOrder * oi.Quantity
+                }).ToList()
+            };
+        }
+        public async Task<List<OrderViewDto>> GetTodayOrdersAsync()
+        {
+            var orders = await _orderRepository.GetByDateAsync(DateTime.Today);
+            return orders.Select(o => new OrderViewDto
+            {
+                Id = o.Id,
+                CustomerName = o.CustomerName,
+                Phone = o.Phone,
+                TotalAmount = o.TotalAmount,
+                Status = o.Status,
+                OrderDate = o.OrderDate,
+                PaymentMethod = o.PaymentMethod,
+                TableNumber = o.TableNumber
+            }).ToList();
+        }
+        public async Task UpdateOrderStatusAsync(int id, string status)
+        {
+            await _orderRepository.UpdateStatusAsync(id, status);
+        }
+    }
+}

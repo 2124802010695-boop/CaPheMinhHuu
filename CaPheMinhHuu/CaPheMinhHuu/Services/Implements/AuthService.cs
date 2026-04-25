@@ -1,0 +1,291 @@
+﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.DTOs.Auth;
+using CaPheMinhHuu.Interfaces;
+using CaPheMinhHuu.Models; // Đảm bảo có dòng này
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+namespace CaPheMinhHuu.Services.Implements
+{
+    public class AuthService : IAuthService
+    {
+        private readonly IUserRepository _userRepository;
+        private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _context;
+
+        public AuthService(IUserRepository userRepository, IConfiguration configuration, ApplicationDbContext context)
+        {
+            _userRepository = userRepository;
+            _configuration = configuration;
+            _context = context;
+        }
+
+        public async Task<LoginResponse?> LoginAsync(LoginRequest request)
+        {
+            // 1. Tìm user
+            var user = await _userRepository.GetUserByUsernameAsync(request.Username);
+
+            // 2. Kiểm tra tồn tại
+            if (user == null) return null;
+
+            // 3. Kiểm tra password bằng BCrypt
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash)) return null;
+
+            // 4. Tạo token
+            var token = GenerateJwtToken(user);
+            var ipAddress = ""; // Sẽ được truyền từ Controller sau
+            var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return new LoginResponse
+            {
+                RefreshToken = refreshToken.Token,
+                Success = true,
+                Token = token,
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FullName = user.FullName,
+                    Role = user.Role,
+                    Avatar = user.Avatar
+                }
+            };
+        }
+
+        private string GenerateJwtToken(User user)
+        {
+            var jwtSettings = _configuration.GetSection("Jwt");
+            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddHours(4),
+                Issuer = jwtSettings["Issuer"],
+                Audience = jwtSettings["Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
+
+        public async Task<LoginResponse?> AdminLoginAsync(AdminLoginRequest request)
+        {
+            // 1. Tìm user theo Username
+            var user = await _userRepository.GetUserByUsernameAsync(request.Username);
+
+            if (user == null)
+                return null;
+
+            // 2. Kiểm tra Role = Admin
+            if (user.Role != "Admin")
+                return null;
+
+            // 3. Kiểm tra IsActive
+            if (!user.IsActive)
+                return null;
+
+            // 4. Kiểm tra LockedUntil
+            if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.Now)
+                return null;
+
+            // 5. Verify password bằng BCrypt
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                // Tăng FailedLoginAttempts
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= 5)
+                {
+                    user.IsActive = false;
+                    user.LockedUntil = DateTime.Now.AddMinutes(15);
+                }
+                await _context.SaveChangesAsync();
+                return null;
+            }
+
+            // 6. Reset FailedLoginAttempts
+            user.FailedLoginAttempts = 0;
+            user.LastLoginAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            // 7. Tạo JWT Token
+            var token = GenerateJwtToken(user);
+            var ipAddress = ""; // Sẽ được truyền từ Controller sau
+            var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
+            // 8. Return response
+            return new LoginResponse
+            {
+                RefreshToken = refreshToken.Token,
+                Success = true,
+                Token = token,
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FullName = user.FullName,
+                    Role = user.Role,
+                    Avatar = user.Avatar
+                }
+            };
+        }
+        public async Task<LoginResponse?> StaffLoginAsync(StaffLoginRequest request)
+        {
+            // 1. Tìm user theo Username (StaffCode chính là Username)
+            var user = await _userRepository.GetUserByUsernameAsync(request.StaffCode);
+            if (user == null) return null;
+            // 2. Kiểm tra Role phải là Cashier hoặc Kitchen
+            if (user.Role != "Cashier" && user.Role != "Kitchen")
+                return null;
+            // 3. Kiểm tra IsActive
+            if (!user.IsActive) return null;
+            // 4. Kiểm tra LockedUntil
+            if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.Now)
+                return null;
+            // 5. Verify password bằng BCrypt
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= 5)
+                {
+                    user.IsActive = false;
+                    user.LockedUntil = DateTime.Now.AddMinutes(15);
+                }
+                await _context.SaveChangesAsync();
+                return null;
+            }
+            // 6. Reset FailedLoginAttempts
+            user.FailedLoginAttempts = 0;
+            user.LastLoginAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+            // 7. Tạo JWT Token
+            var token = GenerateJwtToken(user);
+            var ipAddress = ""; // Sẽ được truyền từ Controller sau
+            var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
+            // 8. Return response
+            return new LoginResponse
+            {
+                RefreshToken = refreshToken.Token,
+                Success = true,
+                Token = token,
+                IsFirstLogin = user.IsFirstLogin,
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FullName = user.FullName,
+                    Role = user.Role,
+                    Phone = user.Phone,
+                    Avatar = user.Avatar
+                }
+            };
+        }
+        public async Task<bool> ChangePasswordAsync(string staffCode, string oldPassword, string newPassword)
+        {
+            var user = await _userRepository.GetUserByUsernameAsync(staffCode);
+            if (user == null) return false;
+            // Verify mật khẩu cũ
+            if (!BCrypt.Net.BCrypt.Verify(oldPassword, user.PasswordHash))
+                return false;
+            // Băm mật khẩu mới
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.IsFirstLogin = false; // Đã đổi mật khẩu lần đầu
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        public async Task<bool> RecordLoginHistoryAsync(int userId, string portal, string status, string? ipAddress, string? userAgent, string? failReason = null)
+        {
+            var loginHistory = new LoginHistory
+            {
+                UserId = userId,
+                Portal = portal,
+                LoginTime = DateTime.Now,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
+                Status = status,
+                FailReason = failReason
+            };
+            _context.LoginHistory.Add(loginHistory);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        // ===== REFRESH TOKEN METHODS =====
+// Helper: Tạo Refresh Token mới
+private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
+        {
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64)),
+                UserId = userId,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),  // Refresh Token sống 7 ngày
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = ipAddress
+            };
+        }
+        // Public: Refresh Token → Trả về Access Token mới + Refresh Token mới 
+        public async Task<LoginResponse?> RefreshTokenAsync(string refreshToken, string? ipAddress)
+        {
+            // 1. Tìm Refresh Token trong DB
+            var existingToken = await _context.RefreshTokens
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Token == refreshToken);
+            if (existingToken == null) return null;
+            // 2. Kiểm tra token còn active không
+            if (!existingToken.IsActive) return null;
+            // 3. Thu hồi token cũ
+            existingToken.RevokedAt = DateTime.UtcNow;
+            existingToken.RevokedByIp = ipAddress;
+            // 4. Tạo Refresh Token mới (Rotation)
+            var newRefreshToken = GenerateRefreshToken(existingToken.UserId, ipAddress);
+            existingToken.ReplacedByToken = newRefreshToken.Token;
+            _context.RefreshTokens.Add(newRefreshToken);
+            // 5. Tạo Access Token mới
+            var newAccessToken = GenerateJwtToken(existingToken.User);
+            await _context.SaveChangesAsync();
+            // 6. Trả response
+            return new LoginResponse
+            {
+                Success = true,
+                Token = newAccessToken,
+                RefreshToken = newRefreshToken.Token,
+                User = new UserInfo
+                {
+                    Id = existingToken.User.Id,
+                    Username = existingToken.User.Username,
+                    FullName = existingToken.User.FullName,
+                    Role = existingToken.User.Role,
+                    Avatar = existingToken.User.Avatar
+                }
+            };
+        }
+        // Public: Thu hồi Refresh Token (Logout)
+        public async Task<bool> RevokeTokenAsync(string refreshToken, string? ipAddress)
+        {
+            var existingToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(r => r.Token == refreshToken);
+            if (existingToken == null || !existingToken.IsActive) return false;
+            existingToken.RevokedAt = DateTime.UtcNow;
+            existingToken.RevokedByIp = ipAddress;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+    }
+}

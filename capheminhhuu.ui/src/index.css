@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* ===================================================================
+   ROOT HEIGHT CHAIN — BẮT BUỘC cho flex layout toàn trang
+   Nếu thiếu, h-full ở component con sẽ không hoạt động vì parent
+   không có height cố định → overflow bị vỡ.
+   =================================================================== */
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}

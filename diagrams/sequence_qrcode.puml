@@ -1,0 +1,85 @@
+@startuml Sequence_QRCode
+title Luồng: Khách đặt món qua QR Code (Revised)
+
+actor "Khách hàng" as customer
+participant "Smartphone" as phone
+participant "Web Server" as server
+database "Database" as db
+participant "BOM Service" as bom
+database "Kho" as inventory
+participant "SignalR Hub" as signalr
+participant "KDS (Bếp)" as kds
+
+customer -> phone: Quét QR Code
+phone -> server: GET /order?table=5
+server -> db: Query Table 5
+server -> db: Check TableStatus
+server -> db: Check ShopOpen
+db --> server: Table Info
+
+alt Bàn đang dùng hoặc Quán đóng cửa
+    server --> phone: Error Page
+    phone --> customer: Hiển thị lỗi
+else OK
+    server --> phone: Form nhập thông tin
+    phone --> customer: Hiển thị Form
+    
+    customer -> phone: Nhập Name, Phone
+    phone -> server: Validate
+    server --> phone: Menu Page
+    phone --> customer: Hiển thị Menu
+    
+    customer -> phone: Chọn món
+    customer -> phone: Chọn size
+    customer -> phone: Thêm giỏ
+    
+    customer -> phone: Gửi đơn hàng
+    phone -> server: POST /api/orders
+    
+    server -> bom: CheckStock(BOM)
+    bom --> server: BOM Data
+    server -> db: Query Inventory
+    db --> server: Stock Data
+    
+    alt Thiếu nguyên liệu
+        server --> phone: Error: "Món hết hàng"
+        phone --> customer: Hiển thị lỗi
+    else Stock OK
+        server -> db: Create Order\n(CustomerName, Phone,\nOrderType=DineIn,\nStatus=Confirmed)
+        server -> db: Create OrderDetails
+        server -> db: Update Table Status\n(Status=Occupied)
+        db --> server: Order Created
+        
+        server -> inventory: DeductStock()
+        inventory --> server: Stock Updated
+        
+        server -> signalr: Broadcast NewOrder
+        signalr -> kds: Realtime
+        kds -> kds: Hiển thị món mới
+        
+        server --> phone: Success
+        phone --> customer: Xác nhận
+        
+        customer -> phone: Theo dõi
+        phone -> signalr: SignalR Connection
+        
+        kds -> signalr: Bếp bấm "Bắt đầu"
+        signalr -> db: Status Update
+        db --> signalr: Updated
+        signalr --> phone: Realtime Update
+        phone --> customer: "Đang làm"
+        
+        kds -> signalr: Bếp bấm "Xong"
+        signalr -> db: Status Update
+        db --> signalr: Updated
+        signalr --> phone: Realtime Update
+        phone --> customer: "Món xong"
+        
+        customer -> server: Gọi thanh toán
+        server -> db: Cashier Payment
+        server -> db: Update IsPaid=true
+        server -> db: Update TableStatus\n(Status=Available)
+    end
+end
+
+@enduml
