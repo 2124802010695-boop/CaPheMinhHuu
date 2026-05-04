@@ -1,16 +1,19 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Security.Claims;
+
 namespace CaPheMinhHuu.Filters
 {
     public class AuditLogActionFilter : IAsyncActionFilter
     {
-        private readonly ApplicationDbContext _context;
-        public AuditLogActionFilter(ApplicationDbContext context)
+        private readonly IAuditLogRepository _auditLogRepo;
+
+        public AuditLogActionFilter(IAuditLogRepository auditLogRepo)
         {
-            _context = context;
+            _auditLogRepo = auditLogRepo;
         }
+
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             var httpMethod = context.HttpContext.Request.Method;
@@ -47,8 +50,7 @@ namespace CaPheMinhHuu.Filters
                 RequestBody = requestBody,
                 UserAgent = context.HttpContext.Request.Headers["User-Agent"].ToString()
             };
-            _context.AuditLogs.Add(auditLog);
-            await _context.SaveChangesAsync();
+            await _auditLogRepo.AddAsync(auditLog);
         }
     }
 }
