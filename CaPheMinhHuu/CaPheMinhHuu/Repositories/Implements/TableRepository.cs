@@ -11,6 +11,14 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             _context = context;
         }
+        public async Task UpdateStatusAsync(int tableId, string status)
+        {
+            var table = await _context.Tables
+                .FirstOrDefaultAsync(t => t.Id == tableId && !t.IsDeleted);
+            if (table == null) return; // Bàn không tồn tại → bỏ qua, không throw
+            table.Status = status;
+            await _context.SaveChangesAsync();
+        }
         public async Task<IEnumerable<Table>> GetAllAsync()
         {
             return await _context.Tables

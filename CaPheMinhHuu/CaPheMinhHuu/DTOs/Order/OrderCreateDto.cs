@@ -9,7 +9,7 @@ namespace CaPheMinhHuu.DTOs.Order
         public string? Phone { get; set; }
         public string? Address { get; set; }
         public string PaymentMethod { get; set; } = "Cash";
-        public int TableNumber { get; set; } = 0;
+        public int? TableId { get; set; }
 
         [Required(ErrorMessage = "Đơn hàng phải có ít nhất 1 sản phẩm")]
         [MinLength(1, ErrorMessage = "Đơn hàng phải có ít nhất 1 sản phẩm")]
@@ -23,4 +23,4 @@ namespace CaPheMinhHuu.DTOs.Order
         [Range(1, 100, ErrorMessage = "Số lượng phải từ 1 đến 100")]
         public int Quantity { get; set; }
     }
-}
+}

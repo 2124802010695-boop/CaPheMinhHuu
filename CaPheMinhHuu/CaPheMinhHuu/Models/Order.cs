@@ -11,7 +11,9 @@ namespace CaPheMinhHuu.Models
         public string Status { get; set; } = "Pending";
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public string PaymentMethod { get; set; } = null!;
-        public int TableNumber { get; set; } = 0;
+        public int? TableId { get; set; }
+        public int? TableNumber { get; set; }
+        public Table? Table { get; set; }
         public User? User { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
         public string? Email { get; set; }

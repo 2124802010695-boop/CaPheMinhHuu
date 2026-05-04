@@ -1,4 +1,6 @@
-﻿using CaPheMinhHuu.Models;
+using CaPheMinhHuu.DTOs.Order;
+using CaPheMinhHuu.Models;
+using Microsoft.EntityFrameworkCore.Storage;
 namespace CaPheMinhHuu.Interfaces
 {
     public interface IOrderRepository
@@ -8,5 +10,6 @@ namespace CaPheMinhHuu.Interfaces
         Task<List<Order>> GetAllAsync();
         Task<List<Order>> GetByDateAsync(DateTime date);
         Task UpdateStatusAsync(int id, string status);
+        Task<IDbContextTransaction> BeginTransactionAsync();
     }
 }

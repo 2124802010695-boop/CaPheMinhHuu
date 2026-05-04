@@ -1,5 +1,6 @@
 ﻿using CaPheMinhHuu.DTOs.Ingredient;
 using CaPheMinhHuu.DTOs.Order;
+using CaPheMinhHuu.Models;
 
 namespace CaPheMinhHuu.Interfaces
 {
@@ -23,5 +24,6 @@ namespace CaPheMinhHuu.Interfaces
         Task<bool> DeductStockFIFOAsync(int ingredientId, decimal quantityNeeded);
         Task<StockCheckResult> CheckStockForOrderAsync(List<OrderItemDto> items);
         Task DeductStockForOrderAsync(List<OrderItemDto> items);
+        Task RestoreStockForOrderAsync(List<OrderItem> items);
     }
 }

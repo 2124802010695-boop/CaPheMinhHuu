@@ -9,7 +9,8 @@ namespace CaPheMinhHuu.DTOs.Order
         public string Status { get; set; } = null!;
         public DateTime OrderDate { get; set; }
         public string PaymentMethod { get; set; } = null!;
-        public int TableNumber { get; set; }
+        public int? TableId { get; set; }
+        public string? TableName { get; set; }
         public List<OrderItemViewDto> Items { get; set; } = new();
     }
     public class OrderItemViewDto

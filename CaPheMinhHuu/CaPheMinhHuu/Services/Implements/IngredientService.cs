@@ -315,6 +315,26 @@ namespace CaPheMinhHuu.Services.Implements
 
             return result.ToString();
         }
+        public async Task RestoreStockForOrderAsync(List<OrderItem> items)
+        {
+            foreach (var item in items)
+            {
+                var recipes = await _recipeRepo.GetByProductIdAsync(item.ProductId);
+                foreach (var recipe in recipes)
+                {
+                    var quantityToRestore = recipe.QuantityRequired * item.Quantity;
+                    // Lấy batch gần nhất (nhập mới nhất) để hoàn vào
+                    var batches = await _batchRepo.GetAvailableFIFOAsync(recipe.IngredientId);
+                    var targetBatch = batches.LastOrDefault(); // LIFO: hoàn vào lô cuối
+                    if (targetBatch != null)
+                    {
+                        targetBatch.CurrentQuantity += quantityToRestore;
+                    }
+                }
+            }
+            await _batchRepo.SaveChangesAsync();
+            _logger.LogInformation("Hoàn kho cho {Count} sản phẩm sau khi hủy đơn", items.Count);
+        }
 
         // ========== BATCH MANAGEMENT ==========
 

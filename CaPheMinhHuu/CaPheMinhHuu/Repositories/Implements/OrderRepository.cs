@@ -1,7 +1,9 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
+using CaPheMinhHuu.DTOs.Order;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 namespace CaPheMinhHuu.Repositories.Implements
 {
     public class OrderRepository : IOrderRepository
@@ -35,10 +37,13 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Orders
                 .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
                 .Where(o => o.OrderDate.Date == date.Date)
                 .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();
         }
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+    => await _context.Database.BeginTransactionAsync();
         public async Task UpdateStatusAsync(int id, string status)
         {
             var order = await _context.Orders.FindAsync(id);

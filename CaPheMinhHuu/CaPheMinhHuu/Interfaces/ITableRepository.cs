@@ -8,5 +8,7 @@ namespace CaPheMinhHuu.Interfaces
         Task<Table> CreateAsync(Table table);
         Task UpdateAsync(Table table);
         Task DeleteAsync(int id);
+        Task UpdateStatusAsync(int tableId, string status);
     }
+
 }

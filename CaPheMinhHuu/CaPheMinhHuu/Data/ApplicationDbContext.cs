@@ -167,8 +167,12 @@ namespace CaPheMinhHuu.Data
             modelBuilder.Entity<Order>(entity =>
             {
                 entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)");
-                entity.HasIndex(o => o.OrderDate); // THÊM DÒNG NÀY
-                entity.HasIndex(o => o.Status); // THÊM DÒNG NÀY (để filter nhanh)
+                entity.HasIndex(o => o.OrderDate); 
+                entity.HasIndex(o => o.Status);
+                entity.HasOne(o => o.Table)
+                        .WithMany()
+                        .HasForeignKey(o => o.TableId)
+                        .OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<OrderItem>(entity =>

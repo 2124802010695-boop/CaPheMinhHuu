@@ -16,20 +16,22 @@ namespace CaPheMinhHuu.Services.Implements
         private readonly IProductRepository _productRepository;
         private readonly IHubContext<KitchenHub> _hubContext;
         private readonly IIngredientService _ingredientService;
-        
+        private readonly ITableRepository _tableRepository;
+
         private readonly ILogger<OrderService> _logger;
         public OrderService(
             IOrderRepository orderRepository,
             IProductRepository productRepository,
             IHubContext<KitchenHub> hubContext,
             IIngredientService ingredientService,
+            ITableRepository tableRepository,
             ILogger<OrderService> logger)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _hubContext = hubContext;
             _ingredientService = ingredientService;
-            
+            _tableRepository = tableRepository;
             _logger = logger;
         }
         public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId)
@@ -48,9 +50,10 @@ namespace CaPheMinhHuu.Services.Implements
                 Phone = dto.Phone,
                 Address = dto.Address ?? "",
                 PaymentMethod = dto.PaymentMethod,
-                TableNumber = dto.TableNumber,
+                TableId = dto.TableId,
                 OrderDate = DateTime.Now,
-                Status = "Pending"
+                Status = "Pending",
+                OrderCode = $"MH-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}"
             };
             decimal totalAmount = 0;
             var orderItems = new List<OrderItem>();
@@ -71,6 +74,8 @@ namespace CaPheMinhHuu.Services.Implements
             order.OrderItems = orderItems;
             order.TotalAmount = totalAmount;
             var createdOrder = await _orderRepository.CreateAsync(order);
+            if (dto.TableId.HasValue)
+                await _tableRepository.UpdateStatusAsync(dto.TableId.Value, "Occupied");
             await _ingredientService.DeductStockForOrderAsync(dto.Items);
             // Lấy OrderViewDto đầy đủ để broadcast (có items, productName...)
             var orderViewDto = await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
@@ -93,7 +98,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Status = order.Status,
                 OrderDate = order.OrderDate,
                 PaymentMethod = order.PaymentMethod,
-                TableNumber = order.TableNumber,
+                TableId = order.TableId,
                 Items = order.OrderItems.Select(oi => new OrderItemViewDto
                 {
                     ProductId = oi.ProductId,
@@ -116,7 +121,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Status = o.Status,
                 OrderDate = o.OrderDate,
                 PaymentMethod = o.PaymentMethod,
-                TableNumber = o.TableNumber,
+                TableId = o.TableId,
                 // FIX: Include items — repo đã load sẵn, chỉ cần map vào DTO
                 Items = o.OrderItems?.Select(oi => new OrderItemViewDto
                 {
@@ -128,12 +133,53 @@ namespace CaPheMinhHuu.Services.Implements
                 }).ToList() ?? new List<OrderItemViewDto>()
             }).ToList();
         }
-        public async Task UpdateOrderStatusAsync(int id, string status)
+        private static readonly Dictionary<string, string[]> _allowedTransitions = new()
         {
-            await _orderRepository.UpdateStatusAsync(id, status);
-            _logger.LogInformation("Đơn hàng #{OrderId} chuyển trạng thái → {Status}", id, status);
-            // Broadcast status change qua SignalR → KDS + Cashier nhận real-time
-            await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", id, status);
+            ["Pending"] = new[] { "Preparing", "Cancelled" },
+            ["Preparing"] = new[] { "Ready", "Cancelled" },
+            ["Ready"] = new[] { "Served", "Cancelled" },
+            ["Served"] = new[] { "Completed" },
+            ["Completed"] = Array.Empty<string>(),
+            ["Cancelled"] = Array.Empty<string>()
+        };
+        public async Task UpdateOrderStatusAsync(int id, string newStatus)
+        {
+            // 1. Validate state machine (đã lấy order ở Service)
+            var order = await _orderRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Không tìm thấy đơn hàng #{id}");
+            if (!_allowedTransitions.TryGetValue(order.Status, out var validNext)
+                || !validNext.Contains(newStatus))
+                throw new InvalidOperationException(
+                    $"Không thể chuyển từ '{order.Status}' → '{newStatus}'");
+            // 2. Nếu hủy đơn → transaction bọc cả UpdateStatus + RestoreStock
+            if (newStatus == "Cancelled")
+            {
+                using var tx = await _orderRepository.BeginTransactionAsync();
+                try
+                {
+                    await _orderRepository.UpdateStatusAsync(id, newStatus);
+                    // Truyền OrderItems trực tiếp — order đã load sẵn ở bước 1
+                    await _ingredientService.RestoreStockForOrderAsync(order.OrderItems.ToList());
+                    await tx.CommitAsync();
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+                    throw;
+                }
+            }
+            else
+            {
+                await _orderRepository.UpdateStatusAsync(id, newStatus);
+            }
+            // Sau khi UpdateStatus thành công
+            if (newStatus == "Completed" || newStatus == "Cancelled")
+            {
+                if (order.TableId.HasValue)
+                    await _tableRepository.UpdateStatusAsync(order.TableId.Value, "Empty");
+            }
+            _logger.LogInformation("Đơn hàng #{OrderId} chuyển trạng thái → {Status}", id, newStatus);
+            await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", id, newStatus);
         }
     }
 }

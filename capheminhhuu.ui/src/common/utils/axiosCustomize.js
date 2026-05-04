@@ -77,7 +77,23 @@ instance.interceptors.response.use(
             isRefreshing = true;
 
             const { tokenKey, refreshKey, userKey } = getTokenKeys();
+            const getTokenKeys = () => {
+         const path = window.location.pathname;
+    
+                if (path.startsWith("/admin")) {
+                    return { tokenKey: "adminToken", refreshKey: "adminRefreshToken", userKey: "adminUser" };
+                }
+                if (path.startsWith("/cashier") || path.startsWith("/kitchen")) {
+                    return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
+                }
+                // Fallback
+                if (localStorage.getItem("adminToken")) {
+                    return { tokenKey: "adminToken", refreshKey: "adminRefreshToken", userKey: "adminUser" };
+                }
+                return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
+};
             const refreshToken = localStorage.getItem(refreshKey);
+
 
             if (!refreshToken) {
                 isRefreshing = false;
