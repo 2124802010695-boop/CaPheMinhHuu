@@ -36,5 +36,16 @@ namespace CaPheMinhHuu.Repositories.Implements
 
         public async Task SaveChangesAsync()
             => await _context.SaveChangesAsync();
+        public async Task<User> AddAsync(User user)
+        {
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return user;
+        }
+        public async Task<List<User>> GetStaffListAsync()
+            => await _context.Users
+                .Where(u => u.Role == "Cashier" || u.Role == "Kitchen")
+                .ToListAsync();
+        
     }
 }

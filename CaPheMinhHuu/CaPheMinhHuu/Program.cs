@@ -78,6 +78,8 @@ builder.Services.AddScoped<IShiftRepository, ShiftRepository>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 // Dashboard
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+
 // Controllers (gộp JsonOptions + AuditLog filter — chỉ gọi 1 lần duy nhất)
 builder.Services.AddControllers(options =>
 {

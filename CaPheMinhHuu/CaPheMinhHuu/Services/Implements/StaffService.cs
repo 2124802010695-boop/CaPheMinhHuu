@@ -1,21 +1,23 @@
-﻿using CaPheMinhHuu.Data;
+﻿
 using CaPheMinhHuu.DTOs.Staff;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
-using Microsoft.EntityFrameworkCore;
+using CaPheMinhHuu.Repositories.Implements;
+
 namespace CaPheMinhHuu.Services.Implements
 {
     public class StaffService : IStaffService
     {
-        private readonly ApplicationDbContext _context;
-        public StaffService(ApplicationDbContext context)
+        private readonly IUserRepository _userRepository;
+
+        public StaffService(IUserRepository userRepository)
         {
-            _context = context;
+            _userRepository = userRepository;
         }
         public async Task<object> CreateStaffAsync(CreateStaffRequest request)
         {
             // 1. Kiểm tra Username đã tồn tại chưa
-            var exists = await _context.Users.AnyAsync(u => u.Username == request.Username);
+            var exists = await _userRepository.IsUserExistsAsync(request.Username);
             if (exists)
                 throw new Exception("Username đã tồn tại trong hệ thống");
             // 2. Kiểm tra Role hợp lệ
@@ -35,8 +37,7 @@ namespace CaPheMinhHuu.Services.Implements
                 IsActive = true,
                 IsFirstLogin = true  // Bắt đổi mật khẩu lần đầu
             };
-            _context.Users.Add(newUser);
-            await _context.SaveChangesAsync();
+            await _userRepository.AddAsync(newUser);
             // 4. Trả về thông tin (KHÔNG trả PasswordHash)
             return new
             {
@@ -50,28 +51,26 @@ namespace CaPheMinhHuu.Services.Implements
         }
         public async Task<List<object>> GetAllStaffAsync()
         {
-            var staffList = await _context.Users
-                .Where(u => u.Role == "Cashier" || u.Role == "Kitchen")
-                .Select(u => new
-                {
-                    u.Id,
-                    u.Username,
-                    u.FullName,
-                    u.Phone,
-                    u.Email,
-                    u.Role,
-                    u.IsActive,
-                    u.Salary,
-                    u.SalaryCoefficient,
-                    u.LastLoginAt,
-                    u.CreatedDate
-                })
-                .ToListAsync();
+            var users = await _userRepository.GetStaffListAsync();
+            var staffList = users.Select(u => new
+            {
+                u.Id,
+                u.Username,
+                u.FullName,
+                u.Phone,
+                u.Email,
+                u.Role,
+                u.IsActive,
+                u.Salary,
+                u.SalaryCoefficient,
+                u.LastLoginAt,
+                u.CreatedDate
+            }).ToList();
             return staffList.Cast<object>().ToList();
         }
         public async Task<object> UpdateStaffAsync(int id, UpdateStaffRequest request)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
                 throw new Exception("Không tìm thấy nhân viên");
             if (user.Role == "Admin")
@@ -84,7 +83,7 @@ namespace CaPheMinhHuu.Services.Implements
             user.Role = request.Role;
             user.Salary = request.Salary;
             user.SalaryCoefficient = request.SalaryCoefficient;
-            await _context.SaveChangesAsync();
+            await _userRepository.UpdateAsync(user);
             return new
             {
                 id = user.Id,
@@ -97,7 +96,7 @@ namespace CaPheMinhHuu.Services.Implements
         }
         public async Task<object> ToggleActiveAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
                 throw new Exception("Không tìm thấy nhân viên");
             if (user.Role == "Admin")
@@ -108,7 +107,7 @@ namespace CaPheMinhHuu.Services.Implements
                 user.LockedUntil = null;
                 user.FailedLoginAttempts = 0;
             }
-            await _context.SaveChangesAsync();
+            await _userRepository.UpdateAsync(user);
             return new
             {
                 id = user.Id,
@@ -119,7 +118,7 @@ namespace CaPheMinhHuu.Services.Implements
         }
         public async Task<object> ResetPasswordAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
                 throw new Exception("Không tìm thấy nhân viên");
             if (user.Role == "Admin")
@@ -128,7 +127,7 @@ namespace CaPheMinhHuu.Services.Implements
             user.IsFirstLogin = true;
             user.FailedLoginAttempts = 0;
             user.LockedUntil = null;
-            await _context.SaveChangesAsync();
+            await _userRepository.UpdateAsync(user);
             return new
             {
                 id = user.Id,

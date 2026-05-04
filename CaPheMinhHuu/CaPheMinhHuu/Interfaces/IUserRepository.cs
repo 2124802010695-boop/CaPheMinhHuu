@@ -13,5 +13,9 @@ namespace CaPheMinhHuu.Interfaces
         Task UpdateAsync(User user);
         Task<User?> GetByIdAsync(int id);
         Task SaveChangesAsync();
+        Task<User> AddAsync(User user);
+        Task<List<User>> GetStaffListAsync();
+        
+
     }
 }
