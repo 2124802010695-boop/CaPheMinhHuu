@@ -174,6 +174,8 @@ namespace CaPheMinhHuu.Data
             .HasQueryFilter(o => !o.IsDeleted);
             modelBuilder.Entity<User>()
                 .HasQueryFilter(u => !u.IsDeleted);
+            modelBuilder.Entity<OrderItem>()
+                .HasQueryFilter(oi => !oi.Order.IsDeleted);
             // --- RefreshToken ---
             modelBuilder.Entity<RefreshToken>(entity =>
             {

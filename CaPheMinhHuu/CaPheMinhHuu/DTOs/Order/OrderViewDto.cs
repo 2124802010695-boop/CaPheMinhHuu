@@ -1,10 +1,10 @@
-﻿namespace CaPheMinhHuu.DTOs.Order
+namespace CaPheMinhHuu.DTOs.Order
 {
     public class OrderViewDto
     {
         public int Id { get; set; }
-        public string CustomerName { get; set; } = null!;
-        public string Phone { get; set; } = null!;
+        public string? CustomerName { get; set; }
+        public string? Phone { get; set; }
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = null!;
         public DateTime OrderDate { get; set; }

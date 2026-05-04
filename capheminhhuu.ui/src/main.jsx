@@ -1,11 +1,19 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import { BrowserRouter } from 'react-router-dom'; // Quan trọng: Nhập Router
-import { CssBaseline } from '@mui/material'; // Quan trọng: Reset CSS
-import './index.css' //
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import ThemeProvider from './common/context/ThemeContext.jsx';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/dm-mono/400.css';
+import '@fontsource/dm-mono/500.css';
+import './index.css';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />   {/* <--- QUAN TRỌNG: Không được bọc BrowserRouter ở đây nữa */}
-  </React.StrictMode>,
-)
+    <React.StrictMode>
+        <ThemeProvider>
+            <App />
+        </ThemeProvider>
+    </React.StrictMode>
+);

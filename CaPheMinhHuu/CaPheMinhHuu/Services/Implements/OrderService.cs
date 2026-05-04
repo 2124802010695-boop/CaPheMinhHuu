@@ -5,6 +5,7 @@ using CaPheMinhHuu.Hubs;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 namespace CaPheMinhHuu.Services.Implements
 
 
@@ -16,18 +17,21 @@ namespace CaPheMinhHuu.Services.Implements
         private readonly IHubContext<KitchenHub> _hubContext;
         private readonly IIngredientService _ingredientService;
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<OrderService> _logger;
         public OrderService(
             IOrderRepository orderRepository,
             IProductRepository productRepository,
             IHubContext<KitchenHub> hubContext,
             IIngredientService ingredientService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            ILogger<OrderService> logger)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _hubContext = hubContext;
             _ingredientService = ingredientService;
             _context = context;
+            _logger = logger;
         }
         public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId)
         {
@@ -69,8 +73,13 @@ namespace CaPheMinhHuu.Services.Implements
             order.TotalAmount = totalAmount;
             var createdOrder = await _orderRepository.CreateAsync(order);
             await _ingredientService.DeductStockForOrderAsync(dto.Items);
-            await _hubContext.Clients.All.SendAsync("ReceiveNewOrder", createdOrder);
-            return await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
+            // Lấy OrderViewDto đầy đủ để broadcast (có items, productName...)
+            var orderViewDto = await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
+            _logger.LogInformation("Đơn hàng #{OrderId} đã tạo — {ItemCount} sản phẩm, tổng {Total:N0}đ",
+                orderViewDto.Id, orderViewDto.Items?.Count ?? 0, orderViewDto.TotalAmount);
+            // Broadcast DTO (không broadcast raw entity) để KDS nhận đầy đủ thông tin
+            await _hubContext.Clients.All.SendAsync("ReceiveNewOrder", orderViewDto);
+            return orderViewDto;
         }
         public async Task<OrderViewDto?> GetOrderByIdAsync(int id)
         {
@@ -108,12 +117,24 @@ namespace CaPheMinhHuu.Services.Implements
                 Status = o.Status,
                 OrderDate = o.OrderDate,
                 PaymentMethod = o.PaymentMethod,
-                TableNumber = o.TableNumber
+                TableNumber = o.TableNumber,
+                // FIX: Include items — repo đã load sẵn, chỉ cần map vào DTO
+                Items = o.OrderItems?.Select(oi => new OrderItemViewDto
+                {
+                    ProductId = oi.ProductId,
+                    ProductName = oi.Product?.Name ?? "N/A",
+                    Quantity = oi.Quantity,
+                    PriceAtOrder = oi.PriceAtOrder,
+                    Subtotal = oi.PriceAtOrder * oi.Quantity
+                }).ToList() ?? new List<OrderItemViewDto>()
             }).ToList();
         }
         public async Task UpdateOrderStatusAsync(int id, string status)
         {
             await _orderRepository.UpdateStatusAsync(id, status);
+            _logger.LogInformation("Đơn hàng #{OrderId} chuyển trạng thái → {Status}", id, status);
+            // Broadcast status change qua SignalR → KDS + Cashier nhận real-time
+            await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", id, status);
         }
     }
 }

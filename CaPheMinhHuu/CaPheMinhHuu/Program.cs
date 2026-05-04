@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using CaPheMinhHuu.Middleware;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,6 +72,7 @@ builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 // Shift
+builder.Services.AddScoped<IShiftRepository, ShiftRepository>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 // Controllers (gộp JsonOptions + AuditLog filter — chỉ gọi 1 lần duy nhất)
 builder.Services.AddControllers(options =>
@@ -184,7 +186,17 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
 }
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseHttpsRedirection();
+// === Security Headers ===
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    await next();
+});
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();

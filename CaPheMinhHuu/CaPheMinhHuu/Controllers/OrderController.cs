@@ -8,7 +8,7 @@ namespace CaPheMinhHuu.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-   
+    [Authorize] // Class-level: mọi action đều yêu cầu auth, tránh quên gắn khi thêm action mới
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;

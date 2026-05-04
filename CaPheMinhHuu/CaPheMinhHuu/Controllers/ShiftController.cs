@@ -7,6 +7,7 @@ using CaPheMinhHuu.Hubs;
 namespace CaPheMinhHuu.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
     public class ShiftController : ControllerBase
     {

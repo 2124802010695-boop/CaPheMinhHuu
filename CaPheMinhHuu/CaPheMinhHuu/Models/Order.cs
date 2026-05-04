@@ -1,14 +1,14 @@
-﻿namespace CaPheMinhHuu.Models
+namespace CaPheMinhHuu.Models
 {
     public class Order : BaseEntity
     {
        
         public int? UserId { get; set; } // Cho phép null (khách vãng lai)
-        public string CustomerName { get; set; } = null!;
-        public string Phone { get; set; } = null!;
-        public string Address { get; set; } = null!;
+        public string? CustomerName { get; set; }  // Nullable: POS tại quán không cần, Customer online bắt buộc qua DTO
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
         public decimal TotalAmount { get; set; }
-        public string Status { get; set; } = "Chờ xử lý";
+        public string Status { get; set; } = "Pending";
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public string PaymentMethod { get; set; } = null!;
         public int TableNumber { get; set; } = 0;
