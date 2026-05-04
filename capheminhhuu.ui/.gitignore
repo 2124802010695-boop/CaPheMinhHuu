@@ -8,3 +8,14 @@
 # Thư mục tài liệu nếu có
 diagrams/
 stitch_giao_di*/
+dist/
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# môi trường
+*.env
+appsettings.Development.json
