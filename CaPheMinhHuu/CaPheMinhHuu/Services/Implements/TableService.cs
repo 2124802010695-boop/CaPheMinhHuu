@@ -1,7 +1,7 @@
-﻿using CaPheMinhHuu.Data;
+﻿using CaPheMinhHuu.DTOs.Table;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
-using CaPheMinhHuu.DTOs.Table;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace CaPheMinhHuu.Services.Implements
@@ -31,7 +31,6 @@ namespace CaPheMinhHuu.Services.Implements
             {
                 Number = dto.Number,
                 Seats = dto.Seats,
-                Area = dto.Area,
                 Status = "Empty",
                 AreaId = dto.AreaId
             };
@@ -64,6 +63,23 @@ namespace CaPheMinhHuu.Services.Implements
         public async Task DeleteAsync(int id)
         {
             await _tableRepository.DeleteAsync(id);
+        }
+        // Implement method đã có trong Phase 3
+        public async Task<IEnumerable<TableResponseDto>> GetAllWithAreaAsync()
+        {
+            var tables = await _tableRepository.GetAllWithAreaAsync();
+            return tables.Select(t => new TableResponseDto
+            {
+                Id = t.Id,
+                Number = t.Number,
+                AreaId = t.AreaId,
+                AreaName = t.AreaNavigation?.Name,
+                AreaDisplayOrder = t.AreaNavigation?.DisplayOrder,
+                AreaIsActive = t.AreaNavigation?.IsActive,
+                Seats = t.Seats,
+                Status = t.Status,
+                QRCode = t.QRCode
+            });
         }
     }
 }

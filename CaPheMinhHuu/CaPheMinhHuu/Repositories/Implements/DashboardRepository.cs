@@ -72,5 +72,76 @@ namespace CaPheMinhHuu.Repositories.Implements
                 .Select(g => new RevenueByDayDto { Date = g.Key, Revenue = g.Sum(x => x.TotalAmount) })
                 .OrderBy(x => x.Date)
                 .ToListAsync();
+        public async Task<List<RevenueByHourDto>> GetRevenueByHourAsync(DateTime date)
+    => await _context.Orders
+        .Where(o => o.OrderDate.Date == date.Date && o.Status != "Cancelled")
+        .GroupBy(o => o.OrderDate.Hour)
+        .Select(g => new RevenueByHourDto
+        {
+            Hour = g.Key,
+            HourLabel = $"{g.Key:D2}:00",
+            Revenue = g.Sum(x => x.TotalAmount),
+            OrderCount = g.Count(),
+            TableOrderCount = g.Count(x => x.TableId != null),
+            TakeAwayCount = g.Count(x => x.TableId == null)
+        })
+        .OrderBy(x => x.Hour)
+        .ToListAsync();
+
+        public async Task<List<StaffShiftSummaryDto>> GetStaffShiftSummaryAsync(int month, int year)
+            => await _context.Shifts
+                .Include(s => s.User)
+                .Where(s => s.OpenTime.Month == month
+                         && s.OpenTime.Year == year
+                         && s.Status == "Closed"
+                         && !s.IsDeleted)
+                .GroupBy(s => s.UserId)
+                .Select(g => new StaffShiftSummaryDto
+                {
+                    UserId = g.Key ,
+                    StaffCode = g.First().User!.Username,
+                    FullName = g.First().User!.FullName,
+                    Avatar = g.First().User!.Avatar,
+                    Role = g.First().User!.Role,
+                    TotalShifts = g.Count(),
+                    TotalHours = g.Sum(s => s.CloseTime.HasValue
+                        ? (decimal)(s.CloseTime.Value - s.OpenTime).TotalHours
+                        : 0),
+                    TotalRevenue = g.Sum(s => s.TotalRevenue ?? 0),
+                    LastShiftDate = g.Max(s => s.OpenTime)
+                })
+                .ToListAsync();
+
+        public async Task<double> GetAvgOrderProcessingMinutesAsync(DateTime from, DateTime to)
+        {
+            var orders = await _context.Orders
+                .Where(o => o.OrderDate.Date >= from
+                         && o.OrderDate.Date <= to
+                         && o.Status == "Completed"
+                         && !o.IsDeleted)
+                .Select(o => new { o.OrderDate, o.UpdatedDate })
+                .ToListAsync();
+
+            if (!orders.Any()) return 0;
+
+            return orders
+                .Where(o => o.UpdatedDate.HasValue)
+                .Average(o => (o.UpdatedDate!.Value - o.OrderDate).TotalMinutes);
+        }
+
+        public async Task<decimal> GetCancellationRateAsync(DateTime from, DateTime to)
+        {
+            var total = await _context.Orders
+                .CountAsync(o => o.OrderDate.Date >= from && o.OrderDate.Date <= to);
+
+            if (total == 0) return 0;
+
+            var cancelled = await _context.Orders
+                .CountAsync(o => o.OrderDate.Date >= from
+                              && o.OrderDate.Date <= to
+                              && o.Status == "Cancelled");
+
+            return Math.Round((decimal)cancelled / total * 100, 2);
+        }
     }
 }

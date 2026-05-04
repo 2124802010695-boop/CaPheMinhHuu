@@ -12,7 +12,6 @@ namespace CaPheMinhHuu.Models
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public string PaymentMethod { get; set; } = null!;
         public int? TableId { get; set; }
-        public int? TableNumber { get; set; }
         public Table? Table { get; set; }
         public User? User { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

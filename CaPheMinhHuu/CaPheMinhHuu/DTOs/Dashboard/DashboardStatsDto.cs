@@ -32,8 +32,12 @@ namespace CaPheMinhHuu.DTOs.Dashboard
     // Doanh thu theo ngày (cho biểu đồ)
     public class RevenueByDayDto
     {
-        public DateTime Date { get; set; }
+        public DateTime Date { get; set; }   
         public decimal Revenue { get; set; }
+        
+        public int OrderCount { get; set; }
+        public int TableOrderCount { get; set; }          
+        public int TakeAwayCount { get; set; }
     }
 
     // Chi tiết nguyên liệu tồn kho thấp
@@ -45,5 +49,28 @@ namespace CaPheMinhHuu.DTOs.Dashboard
         public decimal CurrentStock { get; set; }
         public decimal MinStock { get; set; }
         public string BaseUnit { get; set; } = null!;
+        
+
+    }
+    public class RevenueByHourDto
+    {
+        public int Hour { get; set; }
+        public string HourLabel { get; set; } = null!;  // ← THÊM
+        public decimal Revenue { get; set; }
+        public int OrderCount { get; set; }
+        public int TableOrderCount { get; set; }         // ← THÊM
+        public int TakeAwayCount { get; set; }
+    }
+    public class StaffShiftSummaryDto
+    {
+        public int UserId { get; set; }
+        public string StaffCode { get; set; } = null!;     
+        public string FullName { get; set; } = null!;
+        public string? Avatar { get; set; }                
+        public string Role { get; set; } = null!;          
+        public int TotalShifts { get; set; }
+        public decimal TotalHours { get; set; }           
+        public decimal TotalRevenue { get; set; }
+        public DateTime? LastShiftDate { get; set; }
     }
 }

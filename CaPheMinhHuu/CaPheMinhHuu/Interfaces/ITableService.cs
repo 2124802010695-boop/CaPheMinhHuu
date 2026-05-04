@@ -11,5 +11,6 @@ namespace CaPheMinhHuu.Interfaces
         Task UpdateAsync(int id, UpdateTableDto dto);
         Task UpdateStatusAsync(int id, string status);
         Task DeleteAsync(int id);
+        Task<IEnumerable<TableResponseDto>> GetAllWithAreaAsync();
     }
 }

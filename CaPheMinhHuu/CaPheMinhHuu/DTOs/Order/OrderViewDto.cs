@@ -11,14 +11,8 @@ namespace CaPheMinhHuu.DTOs.Order
         public string PaymentMethod { get; set; } = null!;
         public int? TableId { get; set; }
         public string? TableName { get; set; }
+        public string? OrderCode { get; set; }
         public List<OrderItemViewDto> Items { get; set; } = new();
     }
-    public class OrderItemViewDto
-    {
-        public int ProductId { get; set; }
-        public string ProductName { get; set; } = null!;
-        public int Quantity { get; set; }
-        public decimal PriceAtOrder { get; set; }
-        public decimal Subtotal { get; set; }
-    }
+    
 }

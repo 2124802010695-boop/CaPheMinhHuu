@@ -66,7 +66,8 @@ namespace CaPheMinhHuu.Services.Implements
                 {
                     ProductId = item.ProductId,
                     Quantity = item.Quantity,
-                    PriceAtOrder = product.Price
+                    PriceAtOrder = product.Price,
+                    Note = item.Note
                 };
                 orderItems.Add(orderItem);
                 totalAmount += product.Price * item.Quantity;
@@ -99,13 +100,16 @@ namespace CaPheMinhHuu.Services.Implements
                 OrderDate = order.OrderDate,
                 PaymentMethod = order.PaymentMethod,
                 TableId = order.TableId,
+                TableName = order.Table?.Number.ToString(),
+                OrderCode = order.OrderCode,
                 Items = order.OrderItems.Select(oi => new OrderItemViewDto
                 {
                     ProductId = oi.ProductId,
                     ProductName = oi.Product.Name,
                     Quantity = oi.Quantity,
                     PriceAtOrder = oi.PriceAtOrder,
-                    Subtotal = oi.PriceAtOrder * oi.Quantity
+                    Subtotal = oi.PriceAtOrder * oi.Quantity,
+                    Note = oi.Note
                 }).ToList()
             };
         }
@@ -122,14 +126,16 @@ namespace CaPheMinhHuu.Services.Implements
                 OrderDate = o.OrderDate,
                 PaymentMethod = o.PaymentMethod,
                 TableId = o.TableId,
-                // FIX: Include items — repo đã load sẵn, chỉ cần map vào DTO
+                TableName = o.Table?.Number.ToString(),
+                OrderCode = o.OrderCode,
                 Items = o.OrderItems?.Select(oi => new OrderItemViewDto
                 {
                     ProductId = oi.ProductId,
                     ProductName = oi.Product?.Name ?? "N/A",
                     Quantity = oi.Quantity,
                     PriceAtOrder = oi.PriceAtOrder,
-                    Subtotal = oi.PriceAtOrder * oi.Quantity
+                    Subtotal = oi.PriceAtOrder * oi.Quantity,
+                    Note = oi.Note
                 }).ToList() ?? new List<OrderItemViewDto>()
             }).ToList();
         }
@@ -137,7 +143,7 @@ namespace CaPheMinhHuu.Services.Implements
         {
             ["Pending"] = new[] { "Preparing", "Cancelled" },
             ["Preparing"] = new[] { "Ready", "Cancelled" },
-            ["Ready"] = new[] { "Served", "Cancelled" },
+            ["Ready"] = new[] { "Served" },
             ["Served"] = new[] { "Completed" },
             ["Completed"] = Array.Empty<string>(),
             ["Cancelled"] = Array.Empty<string>()

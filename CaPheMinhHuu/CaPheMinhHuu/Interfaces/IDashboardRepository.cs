@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Dashboard;
+using CaPheMinhHuu.DTOs.Dashboard;
 
 namespace CaPheMinhHuu.Interfaces
 {
@@ -21,5 +21,19 @@ namespace CaPheMinhHuu.Interfaces
 
         // Doanh thu theo ngày (cho biểu đồ N ngày)
         Task<List<RevenueByDayDto>> GetRevenueByDayAsync(DateTime from, DateTime to);
+
+        
+
+        
+        Task<List<RevenueByHourDto>> GetRevenueByHourAsync(DateTime date);
+
+      
+        Task<List<StaffShiftSummaryDto>> GetStaffShiftSummaryAsync(int month, int year);
+
+      
+        Task<double> GetAvgOrderProcessingMinutesAsync(DateTime from, DateTime to);
+
+        
+        Task<decimal> GetCancellationRateAsync(DateTime from, DateTime to);
     }
 }

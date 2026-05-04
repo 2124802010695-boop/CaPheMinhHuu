@@ -15,12 +15,5 @@ namespace CaPheMinhHuu.DTOs.Order
         [MinLength(1, ErrorMessage = "Đơn hàng phải có ít nhất 1 sản phẩm")]
         public List<OrderItemDto> Items { get; set; } = new();
     }
-    public class OrderItemDto
-    {
-        [Range(1, int.MaxValue, ErrorMessage = "ProductId phải > 0")]
-        public int ProductId { get; set; }
-
-        [Range(1, 100, ErrorMessage = "Số lượng phải từ 1 đến 100")]
-        public int Quantity { get; set; }
-    }
+    
 }

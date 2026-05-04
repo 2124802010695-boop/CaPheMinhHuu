@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Models;
+using CaPheMinhHuu.Models;
 namespace CaPheMinhHuu.Interfaces
 {
     public interface ITableRepository
@@ -9,6 +9,9 @@ namespace CaPheMinhHuu.Interfaces
         Task UpdateAsync(Table table);
         Task DeleteAsync(int id);
         Task UpdateStatusAsync(int tableId, string status);
-    }
 
+        /// <summary>Load tất cả bàn kèm Area navigation — dùng cho TableManagement + QuanLyKhuVuc</summary>
+        Task<IEnumerable<Table>> GetAllWithAreaAsync();
+        
+    }
 }

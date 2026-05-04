@@ -24,12 +24,15 @@ namespace CaPheMinhHuu.Repositories.Implements
             return await _context.Orders
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
+                .Include(o => o.Table)
                 .FirstOrDefaultAsync(o => o.Id == id);
         }
         public async Task<List<Order>> GetAllAsync()
         {
             return await _context.Orders
                 .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.Table)
                 .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();
         }
@@ -37,7 +40,8 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Orders
                 .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.Table)
                 .Where(o => o.OrderDate.Date == date.Date)
                 .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();

@@ -77,11 +77,11 @@ export default function TableManagement() {
     };
 
     // Derived logic
-    const zones = ['All', ...new Set(tables.map(t => t.area || 'Khu vực chung'))];
+    const zones = ['All', ...new Set(tables.map(t => t.areaName || 'Khu vực chung'))];
 
-    const filteredTables = activeZone === 'All' 
-        ? tables 
-        : tables.filter(t => (t.area || 'Khu vực chung') === activeZone);
+    const filteredTables = activeZone === 'All'
+        ? tables
+        : tables.filter(t => (t.areaName || 'Khu vực chung') === activeZone);
 
     const totalActive = tables.filter(t => t.status === 'Occupied').length;
 

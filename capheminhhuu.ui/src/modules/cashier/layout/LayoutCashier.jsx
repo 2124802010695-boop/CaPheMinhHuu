@@ -153,7 +153,7 @@ export default function LayoutCashier() {
         <div className="flex h-screen w-full overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
 
             {/* SIDEBAR */}
-            <aside className="h-screen w-64 fixed left-0 top-0 bg-[#1c1b1b] flex flex-col py-8 px-4 text-sm z-50">
+            <aside className="h-screen w-52 fixed left-0 top-0 bg-[#1c1b1b] flex flex-col py-8 px-4 text-sm z-50">
                 <div className="flex items-center gap-3 mb-10 px-2">
                     <div className="w-10 h-10 rounded-lg bg-[#10b981] flex items-center justify-center shadow-lg">
                         <Icon name="coffee_maker" filled className="text-white" />

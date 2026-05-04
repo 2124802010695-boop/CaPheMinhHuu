@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +23,15 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Tables
                 .Where(t => !t.IsDeleted)
+                .ToListAsync();
+        }
+        public async Task<IEnumerable<Table>> GetAllWithAreaAsync()
+        {
+            return await _context.Tables
+                .Include(t => t.AreaNavigation)
+                .Where(t => !t.IsDeleted)
+                .OrderBy(t => t.AreaNavigation != null ? t.AreaNavigation.DisplayOrder : 999)
+                .ThenBy(t => t.Number)
                 .ToListAsync();
         }
         public async Task<Table?> GetByIdAsync(int id)
