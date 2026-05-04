@@ -8,7 +8,6 @@ namespace CaPheMinhHuu.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [EnableRateLimiting("LoginLimit")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -19,6 +18,7 @@ namespace CaPheMinhHuu.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("LoginLimit")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var response = await _authService.LoginAsync(request);
@@ -50,6 +50,7 @@ namespace CaPheMinhHuu.Controllers
             });
         }
         [HttpPost("admin/login")]
+        [EnableRateLimiting("LoginLimit")]
         public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request)
         {
             var response = await _authService.AdminLoginAsync(request);
@@ -64,6 +65,7 @@ namespace CaPheMinhHuu.Controllers
             return Ok(response);
         }
         [HttpPost("staff/login")]
+        [EnableRateLimiting("LoginLimit")]
         public async Task<IActionResult> StaffLogin([FromBody] StaffLoginRequest request)
         {
             var response = await _authService.StaffLoginAsync(request);

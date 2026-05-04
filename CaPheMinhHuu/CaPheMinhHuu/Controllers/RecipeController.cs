@@ -29,15 +29,12 @@ namespace CaPheMinhHuu.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] RecipeCreateDto dto)
         {
-            try
+            
             {
                 var result = await _service.AddIngredientToProductAsync(dto);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message); // Trả về lỗi nếu trùng nguyên liệu
-            }
+            
         }
 
         // DELETE: api/Recipe/10 (Xóa dòng công thức ID 10)

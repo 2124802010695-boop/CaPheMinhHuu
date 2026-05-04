@@ -9,11 +9,13 @@ namespace CaPheMinhHuu.Services.Implements
     {
         private readonly IProductRepository _repo;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<ProductService> _logger;
 
-        public ProductService(IProductRepository repo, IHttpContextAccessor httpContextAccessor)
+        public ProductService(IProductRepository repo, IHttpContextAccessor httpContextAccessor, ILogger<ProductService> logger)
         {
             _repo = repo;
             _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         /// <summary>
@@ -61,13 +63,16 @@ namespace CaPheMinhHuu.Services.Implements
             };
 
             await _repo.AddAsync(product);
+            _logger.LogInformation("Sản phẩm mới: #{Id} - {Name}", product.Id, product.Name);
 
             return new ProductViewDto { Id = product.Id, Name = product.Name };
         }
 
         public async Task<bool> DeleteProductAsync(int id)
         {
-            return await _repo.DeleteAsync(id);
+            var result = await _repo.DeleteAsync(id);
+            if (result) _logger.LogInformation("Xóa sản phẩm #{Id}", id);
+            return result;
         }
         public async Task<bool> UpdateProductAsync(int id, ProductUpdateDto dto)
         {
@@ -84,6 +89,7 @@ namespace CaPheMinhHuu.Services.Implements
             }
             product.UpdatedDate = DateTime.Now;
             await _repo.UpdateAsync(product);
+            _logger.LogInformation("Cập nhật sản phẩm #{Id} - {Name}", id, product.Name);
             return true;
         }
         public async Task<Product?> GetProductByIdAsync(int id)
@@ -97,6 +103,7 @@ namespace CaPheMinhHuu.Services.Implements
             product.ImageUrl = imageUrl;
             product.UpdatedDate = DateTime.Now;
             await _repo.UpdateAsync(product);
+            _logger.LogInformation("Cập nhật ảnh sản phẩm #{Id}", id);
         }
     }
 }

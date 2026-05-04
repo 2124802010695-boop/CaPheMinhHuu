@@ -2,6 +2,7 @@
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CaPheMinhHuu.Repositories.Implements
 {
@@ -56,5 +57,28 @@ namespace CaPheMinhHuu.Repositories.Implements
                 .OrderBy(b => b.ExpiryDate) // FIFO
                 .ToListAsync();
         }
+        public async Task<List<InventoryBatch>> GetAvailableFIFOAsync(int ingredientId)
+        {
+            return await _context.InventoryBatches
+                .Where(b => b.IngredientId == ingredientId
+                         && !b.IsDeleted
+                         && b.CurrentQuantity > 0
+                         && (b.ExpiryDate == null || b.ExpiryDate > DateTime.Now))
+                .OrderBy(b => b.ExpiryDate)      // Hết hạn sớm nhất → dùng trước
+                .ThenBy(b => b.ImportDate)       // Nhập trước → dùng trước nếu cùng hạn
+                .ToListAsync();
+        }
+        public async Task<decimal> GetTotalStockAsync(int ingredientId)
+        {
+            return await _context.InventoryBatches
+                .Where(b => b.IngredientId == ingredientId
+                         && !b.IsDeleted
+                         && b.CurrentQuantity > 0)
+                .SumAsync(b => b.CurrentQuantity);
+        }
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+                        => await _context.Database.BeginTransactionAsync();
+        public async Task SaveChangesAsync()
+            => await _context.SaveChangesAsync();
+        }
     }
-}

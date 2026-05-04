@@ -70,15 +70,12 @@ namespace CaPheMinhHuu.Controllers
         [Authorize(Roles = "Admin, Cashier")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
         {
-            try
+            
             {
                 await _tableService.UpdateStatusAsync(id, status);
                 return Ok(new { message = $"Đã cập nhật bàn {id} thành {status}" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            
         }
         // DELETE: api/table/5
         [HttpDelete("{id}")]

@@ -14,5 +14,8 @@ namespace CaPheMinhHuu.Models
         public int TableNumber { get; set; } = 0;
         public User? User { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+        public string? Email { get; set; }
+        public string OrderCode { get; set; } = "";
+        public Payment? Payment { get; set; }
     }
 }

@@ -28,7 +28,7 @@ namespace CaPheMinhHuu.Controllers
         [HttpPost("request-open")]
         public async Task<IActionResult> RequestOpenShift([FromBody] ShiftOpenDto dto)
         {
-            try
+            
             {
                 var result = await _shiftService.RequestOpenShiftAsync(GetUserId(), dto);
                 await _shiftHub.Clients.Group("Admin").SendAsync("ShiftPendingApproval", new
@@ -40,16 +40,13 @@ namespace CaPheMinhHuu.Controllers
                 });
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            
         }
         [Authorize(Roles = "Cashier")]
         [HttpPost("close/{shiftId}")]
         public async Task<IActionResult> CloseShift(int shiftId, [FromBody] ShiftCloseDto dto)
         {
-            try
+            
             {
                 var result = await _shiftService.CloseShiftAsync(shiftId, GetUserId(), dto);
                 // Thông báo Admin có Z-Report mới cần hậu kiểm
@@ -61,10 +58,7 @@ namespace CaPheMinhHuu.Controllers
                 });
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            
         }
         [Authorize(Roles = "Cashier")]
         [HttpGet("current")]
@@ -79,15 +73,12 @@ namespace CaPheMinhHuu.Controllers
         [HttpGet("z-report/{shiftId}")]
         public async Task<IActionResult> GetZReport(int shiftId)
         {
-            try
+           
             {
                 var report = await _shiftService.GetZReportAsync(shiftId, GetUserId());
                 return Ok(report);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            
         }
         // ===================== ADMIN =====================
         [Authorize(Roles = "Admin")]
@@ -101,7 +92,7 @@ namespace CaPheMinhHuu.Controllers
         [HttpPost("admin/approve/{shiftId}")]
         public async Task<IActionResult> ApproveShift(int shiftId)
         {
-            try
+
             {
                 var result = await _shiftService.ApproveShiftAsync(shiftId, GetUserId());
                 await _shiftHub.Clients.Group($"User_{result.UserId}").SendAsync("ShiftApproved", new
@@ -112,16 +103,13 @@ namespace CaPheMinhHuu.Controllers
                 });
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+           
         }
         [Authorize(Roles = "Admin")]
         [HttpPost("admin/reject/{shiftId}")]
         public async Task<IActionResult> RejectShift(int shiftId, [FromBody] ShiftRejectDto? dto)
         {
-            try
+            
             {
                 var result = await _shiftService.RejectShiftAsync(shiftId, GetUserId(), dto?.Reason);
                 await _shiftHub.Clients.Group($"User_{result.UserId}").SendAsync("ShiftRejected", new
@@ -132,10 +120,7 @@ namespace CaPheMinhHuu.Controllers
                 });
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            
         }
         [Authorize(Roles = "Admin")]
         [HttpGet("admin/all")]
@@ -148,15 +133,26 @@ namespace CaPheMinhHuu.Controllers
         [HttpGet("admin/z-report/{shiftId}")]
         public async Task<IActionResult> AdminGetZReport(int shiftId)
         {
-            try
+            
             {
                 var report = await _shiftService.AdminGetZReportAsync(shiftId);
                 return Ok(report);
             }
-            catch (Exception ex)
+            
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpPost("admin/force-close/{shiftId}")]
+        public async Task<IActionResult> AdminForceCloseShift(int shiftId)
+        {
+            var result = await _shiftService.AdminForceCloseShiftAsync(shiftId, GetUserId());
+
+            await _shiftHub.Clients.Group($"User_{result.UserId}").SendAsync("ShiftForceClosed", new
             {
-                return BadRequest(new { message = ex.Message });
-            }
+                shiftId = result.Id,
+                message = "Ca đã bị Admin đóng chủ động."
+            });
+
+            return Ok(result);
         }
     }
 }

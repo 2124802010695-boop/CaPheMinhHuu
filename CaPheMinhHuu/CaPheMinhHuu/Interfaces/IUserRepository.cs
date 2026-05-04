@@ -10,5 +10,8 @@ namespace CaPheMinhHuu.Interfaces
 
         // Kiểm tra user tồn tại (dùng cho Validate)
         Task<bool> IsUserExistsAsync(string username);
+        Task UpdateAsync(User user);
+        Task<User?> GetByIdAsync(int id);
+        Task SaveChangesAsync();
     }
 }

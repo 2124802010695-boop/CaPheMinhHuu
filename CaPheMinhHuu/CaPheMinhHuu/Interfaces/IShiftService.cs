@@ -11,6 +11,7 @@ namespace CaPheMinhHuu.Interfaces
         // === ADMIN ===
         Task<ShiftViewDto> ApproveShiftAsync(int shiftId, int adminId);
         Task<ShiftViewDto> RejectShiftAsync(int shiftId, int adminId, string? reason);
+        Task<ShiftViewDto> AdminForceCloseShiftAsync(int shiftId, int adminId);
         Task<List<ShiftViewDto>> GetPendingShiftsAsync();
         Task<List<ShiftViewDto>> GetAllShiftsAsync(string? status = null);
         Task<ZReportDto> AdminGetZReportAsync(int shiftId);

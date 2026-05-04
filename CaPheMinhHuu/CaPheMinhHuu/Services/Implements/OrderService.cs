@@ -1,4 +1,4 @@
-using CaPheMinhHuu.Data;
+
 using CaPheMinhHuu.DTOs.Ingredient;
 using CaPheMinhHuu.DTOs.Order;
 using CaPheMinhHuu.Hubs;
@@ -16,21 +16,20 @@ namespace CaPheMinhHuu.Services.Implements
         private readonly IProductRepository _productRepository;
         private readonly IHubContext<KitchenHub> _hubContext;
         private readonly IIngredientService _ingredientService;
-        private readonly ApplicationDbContext _context;
+        
         private readonly ILogger<OrderService> _logger;
         public OrderService(
             IOrderRepository orderRepository,
             IProductRepository productRepository,
             IHubContext<KitchenHub> hubContext,
             IIngredientService ingredientService,
-            ApplicationDbContext context,
             ILogger<OrderService> logger)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _hubContext = hubContext;
             _ingredientService = ingredientService;
-            _context = context;
+            
             _logger = logger;
         }
         public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId)

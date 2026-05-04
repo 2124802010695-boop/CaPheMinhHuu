@@ -16,6 +16,7 @@
         public decimal MinStock { get; set; }
         public decimal MaxStock { get; set; }
         public int DefaultShelfLifeDays { get; set; }
+        public string? CreatedBy { get; set; }
 
         // ========== TỒN KHO REALTIME ==========
         /// <summary>
@@ -67,7 +68,8 @@
         public DateTime ImportDate { get; set; }
         public DateTime? ManufactureDate { get; set; }
         public DateTime? ExpiryDate { get; set; }
-        
+        public string? CreatedBy { get; set; }
+
         /// <summary>
         /// Số ngày còn lại đến HSD
         /// </summary>

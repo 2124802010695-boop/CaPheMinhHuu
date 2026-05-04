@@ -109,15 +109,12 @@ namespace CaPheMinhHuu.Controllers
                 return BadRequest("Tên nguyên liệu không được để trống");
             }
 
-            try
+            
             {
                 var sku = await _service.GenerateSKUAsync(request.Name);
                 return Ok(new { sku });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            
         }
     }
 

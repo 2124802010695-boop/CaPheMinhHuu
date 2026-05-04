@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+
 using CaPheMinhHuu.DTOs.Ingredient;
 using CaPheMinhHuu.DTOs.Order;
 using CaPheMinhHuu.Interfaces;
@@ -13,19 +13,25 @@ namespace CaPheMinhHuu.Services.Implements
         private readonly IIngredientUnitRepository _unitRepo;
         private readonly IInventoryBatchRepository _batchRepo;
         private readonly IRecipeRepository _recipeRepo;
-        private readonly ApplicationDbContext _context;
+        
+        private readonly ILogger<IngredientService> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         public IngredientService(
             IIngredientRepository ingredientRepo,
             IIngredientUnitRepository unitRepo,
             IInventoryBatchRepository batchRepo,
             IRecipeRepository recipeRepo,
-            ApplicationDbContext context)
+            
+            ILogger<IngredientService> logger,
+            IHttpContextAccessor httpContextAccessor)
         {
             _ingredientRepo = ingredientRepo;
             _unitRepo = unitRepo;
             _batchRepo = batchRepo;
             _recipeRepo = recipeRepo;
-            _context = context;
+            
+            _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         // ========== GET ALL ==========
@@ -69,6 +75,7 @@ namespace CaPheMinhHuu.Services.Implements
             };
 
             await _ingredientRepo.AddAsync(ingredient);
+            _logger.LogInformation("Nguyên liệu mới: #{Id} - {Name}, SKU: {SKU}", ingredient.Id, ingredient.Name, ingredient.SKU);
 
             // 2. Tạo BaseUnit mặc định (ConversionRate = 1)
             var baseUnit = new IngredientUnit
@@ -111,7 +118,8 @@ namespace CaPheMinhHuu.Services.Implements
                     ImportDate = dto.InitialBatch.ImportDate,
                     ManufactureDate = dto.InitialBatch.ManufactureDate,
                     ExpiryDate = dto.InitialBatch.ExpiryDate,
-                    LocationId = dto.InitialBatch.LocationId
+                    LocationId = dto.InitialBatch.LocationId,
+                    CreatedBy = GetCurrentUserName()
                 };
                 await _batchRepo.AddAsync(batch);
             }
@@ -144,29 +152,27 @@ namespace CaPheMinhHuu.Services.Implements
         // ========== DELETE ==========
         public async Task<bool> DeleteAsync(int id)
         {
-            return await _ingredientRepo.DeleteAsync(id);
+            var result = await _ingredientRepo.DeleteAsync(id);
+            if (result) _logger.LogInformation("Xóa nguyên liệu #{Id}", id);
+            return result;
         }
 
         // ========== HELPER METHODS ==========
 
-        private  Task<IngredientViewDto> MapToViewDto(Ingredient ingredient)
+        private Task<IngredientViewDto> MapToViewDto(Ingredient ingredient)
         {
-            // Lấy Units và Batches từ repositories
             var units = ingredient.Units ?? new List<IngredientUnit>();
-            var batches = (ingredient.Batches ?? new List<InventoryBatch>())
+            var allBatches = (ingredient.Batches ?? new List<InventoryBatch>())
                 .Where(b => !b.IsDeleted)
-                .OrderBy(b => b.ExpiryDate)
+                .OrderByDescending(b => b.ImportDate)  // Mới nhất trước
                 .ToList();
 
-            // Tính tồn kho realtime
-            var currentStock = batches.Sum(b => b.CurrentQuantity);
+            // Tồn kho chỉ tính batch còn hàng
+            var currentStock = allBatches.Sum(b => b.CurrentQuantity);
 
-            // Xác định trạng thái tồn kho
             var stockStatus = "OK";
-            if (currentStock <= 0)
-                stockStatus = "Out";
-            else if (currentStock <= ingredient.MinStock)
-                stockStatus = "Low";
+            if (currentStock <= 0) stockStatus = "Out";
+            else if (currentStock <= ingredient.MinStock) stockStatus = "Low";
 
             return Task.FromResult(new IngredientViewDto
             {
@@ -188,24 +194,22 @@ namespace CaPheMinhHuu.Services.Implements
                     ConversionRate = u.ConversionRate,
                     IsBaseUnit = u.IsBaseUnit
                 }).ToList(),
-                Batches = batches
-                    .Where(b => b.CurrentQuantity > 0)
-                    .Select(b => new InventoryBatchViewDto
-                    {
-                        Id = b.Id,
-                        BatchCode = b.BatchCode,
-                        CurrentQuantity = b.CurrentQuantity,
-                        InitialQuantity = b.InitialQuantity,
-                        ImportPricePerBaseUnit = b.ImportPricePerBaseUnit,
-                        ImportDate = b.ImportDate,
-                        ManufactureDate = b.ManufactureDate,
-                        ExpiryDate = b.ExpiryDate,
-                        DaysUntilExpiry = b.ExpiryDate.HasValue
-                            ? (int)(b.ExpiryDate.Value - DateTime.Now).TotalDays
-                            : null,
-                        ExpiryStatus = GetExpiryStatus(b.ExpiryDate)
-                    })
-                    .ToList(),
+                // ✅ Trả về TẤT CẢ batch (kể cả đã dùng hết) để xem lịch sử
+                Batches = allBatches.Select(b => new InventoryBatchViewDto
+                {
+                    Id = b.Id,
+                    BatchCode = b.BatchCode,
+                    CurrentQuantity = b.CurrentQuantity,
+                    InitialQuantity = b.InitialQuantity,
+                    ImportPricePerBaseUnit = b.ImportPricePerBaseUnit,
+                    ImportDate = b.ImportDate,
+                    ManufactureDate = b.ManufactureDate,
+                    ExpiryDate = b.ExpiryDate,
+                    DaysUntilExpiry = b.ExpiryDate.HasValue
+                        ? (int)(b.ExpiryDate.Value - DateTime.Now).TotalDays : null,
+                    ExpiryStatus = GetExpiryStatus(b.ExpiryDate),
+                    CreatedBy = b.CreatedBy ?? "Admin"
+                }).ToList(),
                 CreatedDate = ingredient.CreatedDate,
                 UpdatedDate = ingredient.UpdatedDate
             });
@@ -225,6 +229,14 @@ namespace CaPheMinhHuu.Services.Implements
             if (daysLeft < 0) return "Expired";
             if (daysLeft <= 30) return "NearExpiry";
             return "Fresh";
+        }
+        private string GetCurrentUserName()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            return user?.FindFirst("name")?.Value
+                ?? user?.FindFirst("fullName")?.Value
+                ?? user?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                ?? "Admin";
         }
 
         // ========== SKU GENERATION ==========
@@ -324,10 +336,12 @@ namespace CaPheMinhHuu.Services.Implements
                 ImportDate = dto.ImportDate,
                 ManufactureDate = dto.ManufactureDate,
                 ExpiryDate = dto.ExpiryDate,
-                LocationId = dto.LocationId
+                LocationId = dto.LocationId,
+                CreatedBy = GetCurrentUserName()
             };
 
             await _batchRepo.AddAsync(batch);
+            _logger.LogInformation("Nhập lô {BatchCode} cho NL #{Id}, SL: {Qty}", batchCode, ingredientId, dto.Quantity);
 
             return new InventoryBatchViewDto
             {
@@ -415,13 +429,8 @@ namespace CaPheMinhHuu.Services.Implements
         // ========== STOCK OPERATIONS ==========
         public async Task<bool> DeductStockFIFOAsync(int ingredientId, decimal quantityNeeded)
         {
-            var batches = await _context.InventoryBatches
-                .Where(b => b.IngredientId == ingredientId
-                         && !b.IsDeleted
-                         && b.CurrentQuantity > 0)
-                .OrderBy(b => b.ExpiryDate)
-                .ThenBy(b => b.ImportDate)
-                .ToListAsync();
+            var batches = await _batchRepo.GetAvailableFIFOAsync(ingredientId);
+
             var totalAvailable = batches.Sum(b => b.CurrentQuantity);
             if (totalAvailable < quantityNeeded)
                 throw new InvalidOperationException(
@@ -439,27 +448,33 @@ namespace CaPheMinhHuu.Services.Implements
                 {
                     remaining -= batch.CurrentQuantity;
                     batch.CurrentQuantity = 0;
+                   
                 }
             }
-            await _context.SaveChangesAsync();
+            await _batchRepo.SaveChangesAsync();
+
+            _logger.LogInformation("Trừ kho NL #{Id}: {Qty} đơn vị (FIFO)", ingredientId, quantityNeeded);
             return true;
         }
         public async Task<StockCheckResult> CheckStockForOrderAsync(List<OrderItemDto> items)
         {
             var result = new StockCheckResult { IsAvailable = true };
+
             foreach (var item in items)
             {
                 var recipes = await _recipeRepo.GetByProductIdAsync(item.ProductId);
+
                 foreach (var recipe in recipes)
                 {
                     var needed = recipe.QuantityRequired * item.Quantity;
-                    var available = await _context.InventoryBatches
-                        .Where(b => b.IngredientId == recipe.IngredientId
-                                 && !b.IsDeleted && b.CurrentQuantity > 0)
-                        .SumAsync(b => b.CurrentQuantity);
+
+                    
+                    var available = await _batchRepo.GetTotalStockAsync(recipe.IngredientId);
+
                     if (available < needed)
                     {
                         result.IsAvailable = false;
+
                         result.Shortages.Add(new StockShortage
                         {
                             IngredientId = recipe.IngredientId,
@@ -471,11 +486,12 @@ namespace CaPheMinhHuu.Services.Implements
                     }
                 }
             }
+
             return result;
         }
         public async Task DeductStockForOrderAsync(List<OrderItemDto> items)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using var transaction = await _batchRepo.BeginTransactionAsync();
             try
             {
                 foreach (var item in items)

@@ -1,8 +1,9 @@
-﻿using CaPheMinhHuu.Data;
+
 using CaPheMinhHuu.DTOs.Auth;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models; // Đảm bảo có dòng này
-using Microsoft.EntityFrameworkCore;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -14,13 +15,18 @@ namespace CaPheMinhHuu.Services.Implements
     {
         private readonly IUserRepository _userRepository;
         private readonly IConfiguration _configuration;
-        private readonly ApplicationDbContext _context;
+        private readonly IRefreshTokenRepository _refreshTokenRepo;
+        private readonly ILoginHistoryRepository _loginHistoryRepo;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IUserRepository userRepository, IConfiguration configuration, ApplicationDbContext context)
+        public AuthService(IUserRepository userRepository, IConfiguration configuration, IRefreshTokenRepository refreshTokenRepo, ILoginHistoryRepository loginHistoryRepo, ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
+            _refreshTokenRepo = refreshTokenRepo;
+            _loginHistoryRepo = loginHistoryRepo;
             _configuration = configuration;
-            _context = context;
+            
+            _logger = logger;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -38,8 +44,7 @@ namespace CaPheMinhHuu.Services.Implements
             var token = GenerateJwtToken(user);
             var ipAddress = ""; // Sẽ được truyền từ Controller sau
             var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
-            _context.RefreshTokens.Add(refreshToken);
-            await _context.SaveChangesAsync();
+            await _refreshTokenRepo.AddAsync(refreshToken);
 
             return new LoginResponse
             {
@@ -113,22 +118,27 @@ namespace CaPheMinhHuu.Services.Implements
                 {
                     user.IsActive = false;
                     user.LockedUntil = DateTime.Now.AddMinutes(15);
+                    _logger.LogWarning("Admin LOCKED: {Username}, attempts: {Count}", user.Username, user.FailedLoginAttempts);
                 }
-                await _context.SaveChangesAsync();
+                else
+                {
+                    _logger.LogWarning("Admin login FAIL: {Username}, attempts: {Count}", user.Username, user.FailedLoginAttempts);
+                }
+                await _userRepository.UpdateAsync(user);
                 return null;
             }
 
             // 6. Reset FailedLoginAttempts
             user.FailedLoginAttempts = 0;
             user.LastLoginAt = DateTime.Now;
-            await _context.SaveChangesAsync();
+            await _userRepository.SaveChangesAsync();
+            _logger.LogInformation("Admin login OK: {Username}", user.Username);
 
             // 7. Tạo JWT Token
             var token = GenerateJwtToken(user);
             var ipAddress = ""; // Sẽ được truyền từ Controller sau
             var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
-            _context.RefreshTokens.Add(refreshToken);
-            await _context.SaveChangesAsync();
+            await _refreshTokenRepo.AddAsync(refreshToken);
             // 8. Return response
             return new LoginResponse
             {
@@ -166,20 +176,25 @@ namespace CaPheMinhHuu.Services.Implements
                 {
                     user.IsActive = false;
                     user.LockedUntil = DateTime.Now.AddMinutes(15);
+                    _logger.LogWarning("Staff LOCKED: {StaffCode}, attempts: {Count}", request.StaffCode, user.FailedLoginAttempts);
                 }
-                await _context.SaveChangesAsync();
+                else
+                {
+                    _logger.LogWarning("Staff login FAIL: {StaffCode}, attempts: {Count}", request.StaffCode, user.FailedLoginAttempts);
+                }
+                await _userRepository.SaveChangesAsync();
                 return null;
             }
             // 6. Reset FailedLoginAttempts
             user.FailedLoginAttempts = 0;
             user.LastLoginAt = DateTime.Now;
-            await _context.SaveChangesAsync();
+            await _userRepository.SaveChangesAsync();
+            _logger.LogInformation("Staff login OK: {StaffCode}, Role: {Role}", request.StaffCode, user.Role);
             // 7. Tạo JWT Token
             var token = GenerateJwtToken(user);
             var ipAddress = ""; // Sẽ được truyền từ Controller sau
             var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
-            _context.RefreshTokens.Add(refreshToken);
-            await _context.SaveChangesAsync();
+            await _refreshTokenRepo.AddAsync(refreshToken);
             // 8. Return response
             return new LoginResponse
             {
@@ -208,7 +223,8 @@ namespace CaPheMinhHuu.Services.Implements
             // Băm mật khẩu mới
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.IsFirstLogin = false; // Đã đổi mật khẩu lần đầu
-            await _context.SaveChangesAsync();
+            await _userRepository.SaveChangesAsync();
+            _logger.LogInformation("Password changed: {StaffCode}", staffCode);
             return true;
         }
         public async Task<bool> RecordLoginHistoryAsync(int userId, string portal, string status, string? ipAddress, string? userAgent, string? failReason = null)
@@ -223,8 +239,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Status = status,
                 FailReason = failReason
             };
-            _context.LoginHistory.Add(loginHistory);
-            await _context.SaveChangesAsync();
+            await _loginHistoryRepo.AddAsync(loginHistory);
             return true;
         }
         // ===== REFRESH TOKEN METHODS =====
@@ -244,9 +259,7 @@ private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
         public async Task<LoginResponse?> RefreshTokenAsync(string refreshToken, string? ipAddress)
         {
             // 1. Tìm Refresh Token trong DB
-            var existingToken = await _context.RefreshTokens
-                .Include(r => r.User)
-                .FirstOrDefaultAsync(r => r.Token == refreshToken);
+            var existingToken = await _refreshTokenRepo.GetActiveByTokenAsync(refreshToken);
             if (existingToken == null) return null;
             // 2. Kiểm tra token còn active không
             if (!existingToken.IsActive) return null;
@@ -256,10 +269,10 @@ private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
             // 4. Tạo Refresh Token mới (Rotation)
             var newRefreshToken = GenerateRefreshToken(existingToken.UserId, ipAddress);
             existingToken.ReplacedByToken = newRefreshToken.Token;
-            _context.RefreshTokens.Add(newRefreshToken);
+            await _refreshTokenRepo.AddAsync(newRefreshToken);
             // 5. Tạo Access Token mới
             var newAccessToken = GenerateJwtToken(existingToken.User);
-            await _context.SaveChangesAsync();
+            await _refreshTokenRepo.SaveChangesAsync();
             // 6. Trả response
             return new LoginResponse
             {
@@ -279,12 +292,12 @@ private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
         // Public: Thu hồi Refresh Token (Logout)
         public async Task<bool> RevokeTokenAsync(string refreshToken, string? ipAddress)
         {
-            var existingToken = await _context.RefreshTokens
-                .FirstOrDefaultAsync(r => r.Token == refreshToken);
+            var existingToken = await _refreshTokenRepo.GetByTokenAsync(refreshToken);
             if (existingToken == null || !existingToken.IsActive) return false;
             existingToken.RevokedAt = DateTime.UtcNow;
             existingToken.RevokedByIp = ipAddress;
-            await _context.SaveChangesAsync();
+            await _refreshTokenRepo.SaveChangesAsync();
+            _logger.LogInformation("Token revoked — UserId: {UserId}, IP: {IP}", existingToken.UserId, ipAddress);
             return true;
         }
     }

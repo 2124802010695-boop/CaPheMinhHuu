@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Category;
+using CaPheMinhHuu.DTOs.Category;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 
@@ -7,10 +7,12 @@ namespace CaPheMinhHuu.Services.Implements
     public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ILogger<CategoryService> _logger;
 
-        public CategoryService(ICategoryRepository categoryRepository)
+        public CategoryService(ICategoryRepository categoryRepository, ILogger<CategoryService> logger)
         {
             _categoryRepository = categoryRepository;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync()
@@ -34,6 +36,7 @@ namespace CaPheMinhHuu.Services.Implements
             };
 
             var created = await _categoryRepository.AddAsync(newCategory);
+            _logger.LogInformation("Danh mục mới: #{Id} - {Name}", created.Id, created.Name);
 
             return new CategoryDto
             {
@@ -45,7 +48,9 @@ namespace CaPheMinhHuu.Services.Implements
 
         public async Task<bool> DeleteCategoryAsync(int id)
         {
-            return await _categoryRepository.DeleteAsync(id);
+            var result = await _categoryRepository.DeleteAsync(id);
+            if (result) _logger.LogInformation("Xóa danh mục #{Id}", id);
+            return result;
         }
         public async Task<bool> UpdateCategoryAsync(int id, CategoryUpdateDto dto)
         {
@@ -57,6 +62,7 @@ namespace CaPheMinhHuu.Services.Implements
             category.UpdatedDate = DateTime.Now;
 
             await _categoryRepository.UpdateAsync(category);
+            _logger.LogInformation("Cập nhật danh mục #{Id} - {Name}", id, category.Name);
             return true;
         }
     }

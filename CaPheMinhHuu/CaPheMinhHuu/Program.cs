@@ -43,6 +43,8 @@ builder.Services.AddHttpContextAccessor();
 // User & Auth
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<ILoginHistoryRepository, LoginHistoryRepository>();
 
 // Category
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -74,6 +76,8 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 // Shift
 builder.Services.AddScoped<IShiftRepository, ShiftRepository>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
+// Dashboard
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 // Controllers (gộp JsonOptions + AuditLog filter — chỉ gọi 1 lần duy nhất)
 builder.Services.AddControllers(options =>
 {
@@ -86,17 +90,20 @@ builder.Services.AddControllers(options =>
     });
 // SignalR
 builder.Services.AddSignalR();
+// Email Service
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Rate Limiting - Global
 builder.Services.AddRateLimiter(options =>
 {
-    // Global: 30 request/phút cho MỌI API, phân vùng theo IP
+    // Global: 100 request/phút cho MỌI API, phân vùng theo IP
+    // (SPA + React StrictMode dev mode gọi nhiều lần → 30 quá thấp)
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 30,
+                PermitLimit = 100,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -170,6 +177,7 @@ builder.Services.AddAuthentication(options =>
 });
 // Đăng ký AuditLogActionFilter
 builder.Services.AddScoped<AuditLogActionFilter>();
+builder.Services.AddHttpContextAccessor();
 
 
 var app = builder.Build();

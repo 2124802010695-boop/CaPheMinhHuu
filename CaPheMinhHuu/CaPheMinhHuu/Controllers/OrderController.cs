@@ -21,7 +21,7 @@ namespace CaPheMinhHuu.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] OrderCreateDto dto)
         {
-            try
+            
             {
                 var userIdClaim = User.FindFirst("id")?.Value;
                 if (string.IsNullOrEmpty(userIdClaim))
@@ -31,10 +31,7 @@ namespace CaPheMinhHuu.Controllers
                 var result = await _orderService.CreateOrderAsync(dto, userId);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            
         }
         // GET: api/Order/5
         [Authorize(Roles = "Admin, Cashier, Kitchen")]

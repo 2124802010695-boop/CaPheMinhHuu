@@ -132,6 +132,31 @@ namespace CaPheMinhHuu.Services.Implements
 
             return await BuildZReport(shift);
         }
+        public async Task<ShiftViewDto> AdminForceCloseShiftAsync(int shiftId, int adminId)
+        {
+            var shift = await _shiftRepository.GetByIdWithDetailsAsync(shiftId);
+
+            if (shift == null || shift.Status != "Open")
+                throw new InvalidOperationException("Không tìm thấy ca đang mở");
+
+            var closeTime = DateTime.Now;
+            var ordersInShift = await _shiftRepository
+                .GetOrdersInShiftAsync(shift.UserId, shift.OpenTime, closeTime);
+
+            shift.CloseTime = closeTime;
+            shift.ClosingCash = 0;
+            shift.AdminId = adminId;
+            shift.TotalOrders = ordersInShift.Count;
+            shift.TotalRevenue = ordersInShift.Sum(o => o.TotalAmount);
+            shift.Difference = null; // Admin force close — không tính chênh lệch
+            shift.Status = "Closed";
+
+            await _shiftRepository.UpdateAsync(shift);
+
+            _logger.LogWarning("Admin #{AdminId} force close ca #{ShiftId}", adminId, shiftId);
+
+            return MapToViewDto(shift);
+        }
         // ===================== HELPERS =====================
         private async Task<ZReportDto> BuildZReport(Shift shift)
         {

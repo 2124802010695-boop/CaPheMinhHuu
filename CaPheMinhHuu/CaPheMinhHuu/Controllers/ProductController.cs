@@ -31,7 +31,7 @@ namespace CaPheMinhHuu.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromForm] ProductCreateDto dto)
         {
-            try
+            
             {
                 // 1. XỬ LÝ FILE ẢNH (Logic này để ở Controller là hợp lý)
                 if (dto.ImageFile != null)
@@ -60,10 +60,7 @@ namespace CaPheMinhHuu.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+           
 
         }
         // POST: api/Product/{id}/image — Upload/Cập nhật ảnh sản phẩm
@@ -71,7 +68,7 @@ namespace CaPheMinhHuu.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UploadImage(int id, IFormFile ImageFile)
         {
-            try
+            
             {
                 // 1. Validate file
                 if (ImageFile == null || ImageFile.Length == 0)
@@ -107,10 +104,7 @@ namespace CaPheMinhHuu.Controllers
                 await _productService.UpdateProductImageAsync(id, imageUrl);
                 return Ok(new { message = "Cập nhật ảnh thành công!", imageUrl });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            
         }
 
         // DELETE: api/Product/5
@@ -128,7 +122,7 @@ namespace CaPheMinhHuu.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, [FromForm] ProductUpdateDto dto)
         {
-            try
+            
             {
                 if (dto.ImageFile != null)
                 {
@@ -146,10 +140,7 @@ namespace CaPheMinhHuu.Controllers
                 if (!result) return NotFound("Không tìm thấy sản phẩm");
                 return Ok(new { message = "Cập nhật thành công" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            
         }
     }
 }

@@ -30,6 +30,7 @@ public class InventoryBatch : BaseEntity
     public DateTime ImportDate { get; set; }
     public DateTime? ManufactureDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
+    public string? CreatedBy { get; set; }
 
-   
+
 }

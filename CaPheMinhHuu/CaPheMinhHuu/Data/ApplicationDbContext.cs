@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
 using CaPheMinhHuu.Models;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
+using static Azure.Core.HttpHeader;
 
 namespace CaPheMinhHuu.Data
 {
@@ -27,6 +28,10 @@ namespace CaPheMinhHuu.Data
         public DbSet<InventoryBatch> InventoryBatches { get; set; }
         public DbSet<Area> Areas { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<Reservation> Reservations { get; set; }
+        public DbSet<OtpCode> OtpCodes { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<Coupon> Coupons { get; set; }
 
         // 2. XỬ LÝ AUDIT LOG (Tự động điền ngày tạo/sửa)
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -176,6 +181,33 @@ namespace CaPheMinhHuu.Data
                 .HasQueryFilter(u => !u.IsDeleted);
             modelBuilder.Entity<OrderItem>()
                 .HasQueryFilter(oi => !oi.Order.IsDeleted);
+
+            // --- Query Filters cho các entity liên quan tới User ---
+            modelBuilder.Entity<HolidayConfig>()
+                .HasQueryFilter(h => !h.Creator.IsDeleted);
+            modelBuilder.Entity<LoginHistory>()
+                .HasQueryFilter(l => !l.User.IsDeleted);
+            modelBuilder.Entity<RefreshToken>()
+                .HasQueryFilter(r => !r.User.IsDeleted);
+            modelBuilder.Entity<Shift>()
+                .HasQueryFilter(s => !s.IsDeleted);
+
+            // --- Payment ---
+            modelBuilder.Entity<Payment>(entity =>
+            {
+                entity.Property(e => e.Amount).HasPrecision(18, 2);
+            });
+            modelBuilder.Entity<Payment>()
+                .HasQueryFilter(p => !p.Order!.IsDeleted);
+
+            // --- Coupon ---
+            modelBuilder.Entity<Coupon>(entity =>
+            {
+                entity.Property(e => e.DiscountValue).HasPrecision(18, 2);
+                entity.Property(e => e.MinOrderAmount).HasPrecision(18, 2);
+                entity.Property(e => e.MaxDiscountAmount).HasPrecision(18, 2);
+            });
+
             // --- RefreshToken ---
             modelBuilder.Entity<RefreshToken>(entity =>
             {

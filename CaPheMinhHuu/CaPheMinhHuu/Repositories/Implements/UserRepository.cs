@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -25,5 +25,16 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Users.AnyAsync(u => u.Username == username);
         }
+        public async Task<User?> GetByIdAsync(int id)
+            => await _context.Users.FindAsync(id);
+
+        public async Task UpdateAsync(User user)
+        {
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task SaveChangesAsync()
+            => await _context.SaveChangesAsync();
     }
 }
