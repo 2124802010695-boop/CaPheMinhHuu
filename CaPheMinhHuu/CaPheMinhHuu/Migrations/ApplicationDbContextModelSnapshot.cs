@@ -348,9 +348,6 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<int?>("TableId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("TableNumber")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18, 2)");
 
@@ -834,10 +831,6 @@ namespace CaPheMinhHuu.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Area")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("AreaId")
                         .HasColumnType("int");

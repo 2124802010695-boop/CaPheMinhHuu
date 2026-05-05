@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTablesAPI, getTableQRCodeAPI, updateTableStatusAPI } from '../services/tableService';
+import { getOrderById, updateOrderStatus } from '../services/orderService';
+import { onOrderStatusUpdated, onConnectionReady } from '../../../common/utils/signalRConnection';
 
 const statusConfig = {
     'Empty': { label: 'Available', color: 'text-[#4edea3]', bg: 'bg-[#10b981]/20', iconBg: 'bg-[#4edea3]/10', iconColor: 'text-[#4edea3]', border: '' },
@@ -14,13 +16,25 @@ export default function TableManagement() {
     const [activeZone, setActiveZone] = useState('All');
     const [selectedTable, setSelectedTable] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
 
     // QR Modal state
     const [qrModal, setQrModal] = useState({ open: false, data: null });
+    // Order Modal state
+    const [orderModal, setOrderModal] = useState({ open: false, order: null, loading: false });
 
     useEffect(() => {
         fetchTables();
+    }, []);
+
+    useEffect(() => {
+        const cleanup = onConnectionReady(() => {
+            onOrderStatusUpdated((orderId, status) => {
+                if (['Completed', 'Cancelled', 'Occupied'].includes(status)) {
+                    fetchTables();
+                }
+            });
+        });
+        return cleanup;
     }, []);
 
     const fetchTables = async () => {
@@ -36,8 +50,6 @@ export default function TableManagement() {
 
     // ===== HANDLER: Mở bàn (Empty → Occupied) =====
     const handleOpenTable = async (table) => {
-        if (actionLoading) return;
-        setActionLoading(true);
         try {
             await updateTableStatusAPI(table.id, 'Occupied');
             setSelectedTable(null);
@@ -46,23 +58,18 @@ export default function TableManagement() {
             console.error('Lỗi mở bàn:', err);
             alert(err.response?.data?.message || 'Không thể mở bàn');
         }
-        setActionLoading(false);
     };
 
-    // ===== HANDLER: Trả bàn / Thanh toán (Occupied → Empty) =====
-    const handleCloseTable = async (table) => {
-        if (actionLoading) return;
-        if (!window.confirm(`Xác nhận trả bàn ${table.number}?`)) return;
-        setActionLoading(true);
+    // ===== HANDLER: Trả bàn thủ công (Occupied → Empty, không có đơn) =====
+    const handleReleaseTable = async (table) => {
+        if (!window.confirm('Xác nhận trả bàn ' + table.number + '? Bàn sẽ về trạng thái trống.')) return;
         try {
             await updateTableStatusAPI(table.id, 'Empty');
+            fetchTables();
             setSelectedTable(null);
-            await fetchTables();
-        } catch (err) {
-            console.error('Lỗi trả bàn:', err);
-            alert(err.response?.data?.message || 'Không thể trả bàn');
+        } catch {
+            alert('Lỗi trả bàn, thử lại');
         }
-        setActionLoading(false);
     };
 
     // ===== HANDLER: Xem QR Code =====
@@ -76,12 +83,37 @@ export default function TableManagement() {
         }
     };
 
+    // Handlers: Order Modal
+    const openOrderModal = async (tableId, orderId) => {
+        if (!orderId) return;
+        setOrderModal({ open: true, order: null, loading: true });
+        try {
+            const order = await getOrderById(orderId);
+            setOrderModal({ open: true, order, loading: false });
+        } catch {
+            setOrderModal({ open: false, order: null, loading: false });
+        }
+    };
+
+    const closeOrderModal = () => setOrderModal({ open: false, order: null, loading: false });
+
+    const handleCashPayment = async (orderId) => {
+        try {
+            await updateOrderStatus(orderId, 'Completed');
+            closeOrderModal();
+            fetchTables();
+        } catch {
+            alert('Lỗi thanh toán, thử lại');
+        }
+    };
+
     // Derived logic
     const zones = ['All', ...new Set(tables.map(t => t.areaName || 'Khu vực chung'))];
 
-    const filteredTables = activeZone === 'All'
+    const filteredTables = (activeZone === 'All'
         ? tables
-        : tables.filter(t => (t.areaName || 'Khu vực chung') === activeZone);
+        : tables.filter(t => (t.areaName || 'Khu vực chung') === activeZone)
+    ).filter(t => t.areaIsActive !== false);
 
     const totalActive = tables.filter(t => t.status === 'Occupied').length;
 
@@ -160,21 +192,28 @@ export default function TableManagement() {
                                             {table.status === 'Empty' && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleOpenTable(table); }}
-                                                    disabled={actionLoading}
-                                                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-[#4edea3] text-[#003824] font-bold text-sm active:scale-95 transition-transform disabled:opacity-50"
+                                                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-[#4edea3] text-[#003824] font-bold text-sm active:scale-95 transition-transform"
                                                 >
                                                     <span className="material-symbols-outlined">add_shopping_cart</span>
-                                                    <span>{actionLoading ? 'Đang xử lý...' : 'Mở bàn'}</span>
+                                                    <span>Mở bàn</span>
                                                 </button>
                                             )}
-                                            {table.status === 'Occupied' && (
+                                            {table.status === 'Occupied' && table.currentOrderId && (
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleCloseTable(table); }}
-                                                    disabled={actionLoading}
-                                                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-[#393939] text-[#e5e2e1] font-medium text-sm transition-colors border border-[#3c4a42]/20 disabled:opacity-50"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedTable(null); openOrderModal(table.id, table.currentOrderId); }}
+                                                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-[#393939] text-[#e5e2e1] font-medium text-sm transition-colors border border-[#3c4a42]/20"
                                                 >
-                                                    <span className="material-symbols-outlined">payments</span>
-                                                    <span>{actionLoading ? 'Đang xử lý...' : 'Thanh toán / Trả bàn'}</span>
+                                                    <span className="material-symbols-outlined">receipt</span>
+                                                    <span>Xem đơn / Thanh toán</span>
+                                                </button>
+                                            )}
+                                            {table.status === 'Occupied' && !table.currentOrderId && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleReleaseTable(table); }}
+                                                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-[#393939] text-[#ffb4ab] font-medium text-sm transition-colors border border-[#93000a]/20"
+                                                >
+                                                    <span className="material-symbols-outlined">logout</span>
+                                                    <span>Trả bàn</span>
                                                 </button>
                                             )}
                                             <button
@@ -253,6 +292,75 @@ export default function TableManagement() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Order Modal */}
+            {orderModal.open && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+                    onClick={closeOrderModal}>
+                    <div className="bg-[#1c1b1b] rounded-3xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto border border-[#3c4a42]/20 shadow-2xl"
+                        onClick={e => e.stopPropagation()}>
+
+                        {orderModal.loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="w-8 h-8 border-4 border-[#4edea3] border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : orderModal.order ? (
+                            <>
+                                <div className="flex justify-between items-center mb-5">
+                                    <h3 className="text-white text-lg font-bold">
+                                        {orderModal.order.tableId ? `Bàn ${orderModal.order.tableName || orderModal.order.tableId}` : 'Mang đi'}
+                                    </h3>
+                                    <span className="text-[#86948a] text-sm font-mono">#{orderModal.order.orderCode}</span>
+                                </div>
+
+                                <div className="space-y-2 mb-5">
+                                    {(orderModal.order.items || []).map((item, i) => (
+                                        <div key={i} className="bg-[#2a2a2a] rounded-xl p-3">
+                                            <div className="flex justify-between text-white text-sm">
+                                                <span>{item.quantity}x {item.productName}</span>
+                                                <span className="text-[#4edea3] font-semibold">{(item.subtotal ?? item.price * item.quantity)?.toLocaleString('vi-VN')}đ</span>
+                                            </div>
+                                            {item.note && (
+                                                <p className="text-[#86948a] text-xs mt-1">📝 {item.note}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="border-t border-[#3c4a42]/20 pt-3 mb-5">
+                                    <div className="flex justify-between text-white font-bold text-base">
+                                        <span>Tổng cộng</span>
+                                        <span className="text-[#4edea3]">{orderModal.order.totalAmount?.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                </div>
+
+                                <div className="mb-5">
+                                    <input
+                                        type="text"
+                                        placeholder="SĐT hoặc email tích điểm (tuỳ chọn)"
+                                        className="w-full bg-[#2a2a2a] text-white rounded-xl px-4 py-2.5 text-sm outline-none border border-[#3c4a42]/20 focus:border-[#10b981] placeholder:text-[#86948a]/60"
+                                        onChange={e => setOrderModal(prev => ({
+                                            ...prev,
+                                            order: { ...prev.order, loyaltyContact: e.target.value }
+                                        }))}
+                                    />
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button onClick={closeOrderModal}
+                                        className="flex-1 py-2.5 rounded-xl bg-[#2a2a2a] text-[#86948a] text-sm hover:bg-[#393939] transition-colors">
+                                        Đóng
+                                    </button>
+                                    <button onClick={() => handleCashPayment(orderModal.order.id)}
+                                        className="flex-1 py-2.5 rounded-xl bg-[#10b981] text-white text-sm font-bold hover:brightness-110 active:scale-95 transition-all">
+                                        Thanh toán tiền mặt
+                                    </button>
+                                </div>
+                            </>
+                        ) : null}
                     </div>
                 </div>
             )}

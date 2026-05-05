@@ -170,7 +170,7 @@ namespace CaPheMinhHuu.Data
                 entity.HasIndex(o => o.OrderDate); 
                 entity.HasIndex(o => o.Status);
                 entity.HasOne(o => o.Table)
-                        .WithMany()
+                        .WithMany(t => t.Orders)
                         .HasForeignKey(o => o.TableId)
                         .OnDelete(DeleteBehavior.SetNull);
             });

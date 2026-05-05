@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Table;
+using CaPheMinhHuu.DTOs.Table;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 
@@ -78,7 +78,9 @@ namespace CaPheMinhHuu.Services.Implements
                 AreaIsActive = t.AreaNavigation?.IsActive,
                 Seats = t.Seats,
                 Status = t.Status,
-                QRCode = t.QRCode
+                QRCode = t.QRCode,
+                CurrentOrderId = t.Orders
+                    .FirstOrDefault(o => o.Status != "Completed" && o.Status != "Cancelled")?.Id
             });
         }
     }

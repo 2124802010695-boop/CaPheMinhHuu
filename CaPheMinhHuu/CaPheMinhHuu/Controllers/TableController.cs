@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Table;
+using CaPheMinhHuu.DTOs.Table;
 using CaPheMinhHuu.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +19,7 @@ namespace CaPheMinhHuu.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
-            var tables = await _tableService.GetAllAsync();
+            var tables = await _tableService.GetAllWithAreaAsync();
             return Ok(tables);
         }
         // GET: api/table/5

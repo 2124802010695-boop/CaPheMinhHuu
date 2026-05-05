@@ -1,4 +1,3 @@
-
 using CaPheMinhHuu.DTOs.Dashboard;
 using CaPheMinhHuu.Interfaces;
 
@@ -33,6 +32,9 @@ namespace CaPheMinhHuu.Services.Implements
             var lowStockItems = await _dashboardRepo.GetLowStockItemsAsync();
             var topProducts = await _dashboardRepo.GetTopProductsAsync(startOfMonth, today);
             var revenueByDay = await _dashboardRepo.GetRevenueByDayAsync(chartStart, today);
+            var revenueByHour    = await _dashboardRepo.GetRevenueByHourAsync(today);
+            var staffSummary     = await _dashboardRepo.GetStaffShiftSummaryAsync(today.Month, today.Year);
+            var cancellationRate = await _dashboardRepo.GetCancellationRateAsync(startOfMonth, today);
             _logger.LogInformation("Dashboard — Revenue: {R}đ, Orders: {O}, Pending: {P}, LowStock: {L}",
                 todayRevenue, todayOrders, pendingOrders, lowStockItems.Count);
             return new DashboardStatsDto
@@ -45,7 +47,10 @@ namespace CaPheMinhHuu.Services.Implements
                 LowStockCount = lowStockItems.Count,
                 LowStockItems = lowStockItems,
                 TopProducts = topProducts,
-                RevenueByDay = revenueByDay
+                RevenueByDay = revenueByDay,
+                RevenueByHour    = revenueByHour,
+                StaffShiftSummary = staffSummary,
+                CancellationRate  = cancellationRate
             };
         }
     }

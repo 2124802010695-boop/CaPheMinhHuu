@@ -83,33 +83,23 @@ const QuanLyCaLamViec = () => {
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
         if (!token) return;
-
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl('https://localhost:7280/shiftHub', {
-                accessTokenFactory: () => token,
-            })
+            .withUrl(`https://localhost:7280/appHub?access_token=${token}`)
             .withAutomaticReconnect()
             .configureLogging(signalR.LogLevel.Warning)
             .build();
-
         connection.start()
             .then(() => {
-                connection.invoke('JoinGroup', 'Admin').catch(console.error);
-
-                // Cashier gửi yêu cầu mở ca
                 connection.on('ShiftPendingApproval', (data) => {
                     setNotification({ open: true, message: `🔔 ${data.message}` });
-                    fetchData();
+                    fetchDataRef.current?.();
                 });
-
-                // Cashier đóng ca
                 connection.on('ShiftClosed', (data) => {
                     setNotification({ open: true, message: `✅ ${data.message}` });
-                    fetchData();
+                    fetchDataRef.current?.();
                 });
             })
-            .catch(err => console.warn('SignalR connect failed:', err));
-
+            .catch(err => console.warn('[SignalR] Kết nối AppHub thất bại:', err));
         connectionRef.current = connection;
         return () => { connection.stop(); };
     }, []);
@@ -117,6 +107,7 @@ const QuanLyCaLamViec = () => {
     // ── Data ──────────────────────────────────────────────────
     useEffect(() => { fetchData(); }, [tab]);
 
+    const fetchDataRef = useRef(null);
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -132,6 +123,7 @@ const QuanLyCaLamViec = () => {
         }
         setLoading(false);
     };
+    fetchDataRef.current = fetchData;
 
     // ── Actions ───────────────────────────────────────────────
     const handleApprove = async (shiftId) => {

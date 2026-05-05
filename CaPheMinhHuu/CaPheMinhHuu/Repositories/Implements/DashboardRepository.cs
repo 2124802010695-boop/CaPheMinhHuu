@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.DTOs.Dashboard;
 using CaPheMinhHuu.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -89,28 +89,38 @@ namespace CaPheMinhHuu.Repositories.Implements
         .ToListAsync();
 
         public async Task<List<StaffShiftSummaryDto>> GetStaffShiftSummaryAsync(int month, int year)
-            => await _context.Shifts
+        {
+            var shifts = await _context.Shifts
                 .Include(s => s.User)
                 .Where(s => s.OpenTime.Month == month
                          && s.OpenTime.Year == year
                          && s.Status == "Closed"
-                         && !s.IsDeleted)
-                .GroupBy(s => s.UserId)
-                .Select(g => new StaffShiftSummaryDto
-                {
-                    UserId = g.Key ,
-                    StaffCode = g.First().User!.Username,
-                    FullName = g.First().User!.FullName,
-                    Avatar = g.First().User!.Avatar,
-                    Role = g.First().User!.Role,
-                    TotalShifts = g.Count(),
-                    TotalHours = g.Sum(s => s.CloseTime.HasValue
-                        ? (decimal)(s.CloseTime.Value - s.OpenTime).TotalHours
-                        : 0),
-                    TotalRevenue = g.Sum(s => s.TotalRevenue ?? 0),
-                    LastShiftDate = g.Max(s => s.OpenTime)
-                })
+                         && !s.IsDeleted
+                         && s.User != null)
                 .ToListAsync();
+
+            return shifts
+                .GroupBy(s => s.UserId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return new StaffShiftSummaryDto
+                    {
+                        UserId        = g.Key,
+                        StaffCode     = first.User!.Username,
+                        FullName      = first.User!.FullName,
+                        Avatar        = first.User!.Avatar,
+                        Role          = first.User!.Role,
+                        TotalShifts   = g.Count(),
+                        TotalHours    = g.Sum(s => s.CloseTime.HasValue
+                            ? (decimal)(s.CloseTime.Value - s.OpenTime).TotalHours
+                            : 0),
+                        TotalRevenue  = g.Sum(s => s.TotalRevenue ?? 0),
+                        LastShiftDate = g.Max(s => s.OpenTime)
+                    };
+                })
+                .ToList();
+        }
 
         public async Task<double> GetAvgOrderProcessingMinutesAsync(DateTime from, DateTime to)
         {

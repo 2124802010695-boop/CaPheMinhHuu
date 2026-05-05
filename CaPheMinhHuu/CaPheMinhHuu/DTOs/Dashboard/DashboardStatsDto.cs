@@ -19,6 +19,11 @@ namespace CaPheMinhHuu.DTOs.Dashboard
         // === Analytics ===
         public List<TopProductDto> TopProducts { get; set; } = new();
         public List<RevenueByDayDto> RevenueByDay { get; set; } = new();
+
+        // === Hourly & Operations ===
+        public List<RevenueByHourDto> RevenueByHour { get; set; } = new();
+        public List<StaffShiftSummaryDto> StaffShiftSummary { get; set; } = new();
+        public decimal CancellationRate { get; set; }
     }
 
     // Top sản phẩm bán chạy

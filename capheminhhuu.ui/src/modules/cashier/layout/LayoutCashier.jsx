@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { revokeTokenAPI } from '../../../common/services/authService';
 import { getCurrentShiftAPI } from '../services/shiftService';
+import { startConnection, stopConnection, onConnectionReady, onShiftApproved, onShiftRejected } from '../../../common/utils/signalRConnection';
+import toast from 'react-hot-toast';
 
 const Icon = ({ name, filled, className = '' }) => (
     <span
@@ -41,9 +43,16 @@ export default function LayoutCashier() {
                 setCurrentShift(null);
             }
         } catch (err) {
-            console.error('Lỗi kiểm tra ca:', err);
-            setShiftStatus('none');
-            setCurrentShift(null);
+            const status = err?.response?.status;
+            if (status === 401 || status === 403) {
+                // Token hết hạn → axiosCustomize sẽ tự refresh
+                // Không set shiftStatus = 'none' vội
+                setShiftStatus('loading');
+            } else {
+                console.error('Lỗi kiểm tra ca:', err);
+                setShiftStatus('none');
+                setCurrentShift(null);
+            }
         }
     }, []);
 
@@ -51,10 +60,43 @@ export default function LayoutCashier() {
         checkShift();
     }, [checkShift]);
 
+    useEffect(() => {
+        if (shiftStatus === 'open') {
+            let offApproved = () => {};
+            let offRejected = () => {};
+
+            const cleanupReady = onConnectionReady(() => {
+                offApproved = onShiftApproved((data) => {
+                    toast.success(`✅ ${data.message || 'Ca đã được duyệt!'}`);
+                    checkShift();
+                });
+                offRejected = onShiftRejected((data) => {
+                    toast.error(`❌ ${data.message || 'Ca bị từ chối.'}`);
+                });
+            });
+
+            startConnection().catch(console.error);
+
+            return () => {
+                offApproved();
+                offRejected();
+                cleanupReady();
+                stopConnection();
+            };
+        }
+    }, [shiftStatus, checkShift]);
+
     // Redirect sang shift-open nếu chưa mở ca và đang ở route không exempt
     useEffect(() => {
         if (shiftStatus === 'none' && !SHIFT_EXEMPT_PATHS.includes(location.pathname)) {
             navigate('/cashier/shift-open', { replace: true });
+        }
+    }, [shiftStatus, location.pathname, navigate]);
+
+    // Khi ca được duyệt (shiftStatus đổi thành 'open') → tự động vào POS
+    useEffect(() => {
+        if (shiftStatus === 'open' && SHIFT_EXEMPT_PATHS.includes(location.pathname)) {
+            navigate('/cashier/pos', { replace: true });
         }
     }, [shiftStatus, location.pathname, navigate]);
 

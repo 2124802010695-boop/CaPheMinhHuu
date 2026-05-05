@@ -18,6 +18,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import CategoryIcon from '@mui/icons-material/Category';
 import PeopleIcon from '@mui/icons-material/People';
+import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -133,6 +134,8 @@ export default function AdminDashboard() {
     const [error, setError] = useState(null);
     const [days, setDays] = useState(30);
     const [stockOpen, setStockOpen] = useState(false);
+    const [hourOpen, setHourOpen]   = useState(false);
+    const [staffOpen, setStaffOpen] = useState(false);
 
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
@@ -259,6 +262,15 @@ export default function AdminDashboard() {
                         value={fmtVND(stats?.monthRevenue)}
                         subtitle={`Tuần này: ${fmtVND(stats?.weekRevenue)}`}
                         icon={<CalendarMonthIcon />} color={COLORS.purple} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <StatCard title="Tỷ lệ hủy đơn"
+                        value={`${stats?.cancellationRate ?? 0}%`}
+                        subtitle="Tính từ đầu tháng"
+                        icon={<PendingActionsIcon />}
+                        color={(stats?.cancellationRate ?? 0) > 10 ? COLORS.red : COLORS.green}
+                        chipLabel={(stats?.cancellationRate ?? 0) > 10 ? 'Cao' : 'Bình thường'}
+                        chipColor={(stats?.cancellationRate ?? 0) > 10 ? 'error' : 'success'} />
                 </Grid>
             </Grid>
 
@@ -461,6 +473,7 @@ export default function AdminDashboard() {
                     { label: 'Danh mục', icon: <CategoryIcon />, path: '/admin/quanlydanhmuc', color: '#10b981' },
                     { label: 'Kho & NL', icon: <InventoryIcon />, path: '/admin/quanlykho', color: '#f59e0b' },
                     { label: 'Nhân viên', icon: <PeopleIcon />, path: '/admin/quanlynhanvien', color: '#8b5cf6' },
+                    { label: 'Khu Vực & Bàn', icon: <MeetingRoomIcon />, path: '/admin/quanlykhuvucban', color: '#10b981' },
                 ].map((item, i) => (
                     <Grid item xs={6} sm={3} key={i}>
                         <Card onClick={() => navigate(item.path)} sx={{
@@ -476,6 +489,116 @@ export default function AdminDashboard() {
                         </Card>
                     </Grid>
                 ))}
+            </Grid>
+
+            {/* Doanh thu theo giờ + Thống kê nhân sự */}
+            <Grid container spacing={2.5} sx={{ mt: 3, mb: 3 }}>
+                <Grid item xs={12} md={6}>
+                    <Paper sx={{ p: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                            <Typography variant="body2" fontWeight={700}
+                                sx={{ fontFamily: '"DM Mono", monospace', letterSpacing: '.04em' }}>
+                                DOANH THU THEO GIỜ
+                            </Typography>
+                            <Typography variant="caption"
+                                sx={{ fontFamily: '"DM Mono", monospace', color: 'text.secondary' }}>
+                                HÔM NAY
+                            </Typography>
+                        </Box>
+                        {(stats?.revenueByHour || []).length === 0 ? (
+                            <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Typography variant="body2" color="text.secondary"
+                                    sx={{ fontFamily: '"DM Mono", monospace' }}>
+                                    Chưa có dữ liệu hôm nay
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={200}>
+                                <AreaChart data={stats.revenueByHour}>
+                                    <defs>
+                                        <linearGradient id="colorHour" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={COLORS.blue} stopOpacity={isDark ? .3 : .15} />
+                                            <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#ffffff08' : '#f0f0f0'} />
+                                    <XAxis dataKey="hourLabel"
+                                        tick={{ fontSize: 10, fontFamily: 'DM Mono', fill: mutedColor }}
+                                        axisLine={false} tickLine={false} />
+                                    <YAxis tickFormatter={fmtVND}
+                                        tick={{ fontSize: 10, fontFamily: 'DM Mono', fill: mutedColor }}
+                                        axisLine={false} tickLine={false} width={48} />
+                                    <RechartsTooltip
+                                        contentStyle={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 8, fontSize: 12, fontFamily: 'DM Mono' }}
+                                        formatter={(v) => [fmtFull(v), 'Doanh thu']}
+                                    />
+                                    <Area type="monotone" dataKey="revenue"
+                                        stroke={COLORS.blue} strokeWidth={2}
+                                        fill="url(#colorHour)" animationDuration={600} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <Paper sx={{ p: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                            <Typography variant="body2" fontWeight={700}
+                                sx={{ fontFamily: '"DM Mono", monospace', letterSpacing: '.04em' }}>
+                                THỐNG KÊ NHÂN SỰ
+                            </Typography>
+                            <Typography variant="caption"
+                                sx={{ fontFamily: '"DM Mono", monospace', color: 'text.secondary' }}>
+                                THÁNG NÀY
+                            </Typography>
+                        </Box>
+                        {(stats?.staffShiftSummary || []).length === 0 ? (
+                            <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Typography variant="body2" color="text.secondary"
+                                    sx={{ fontFamily: '"DM Mono", monospace' }}>
+                                    Chưa có dữ liệu ca làm việc
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 600, fontSize: 11, fontFamily: '"DM Mono", monospace' }}>NHÂN VIÊN</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11, fontFamily: '"DM Mono", monospace' }}>CA</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11, fontFamily: '"DM Mono", monospace' }}>GIỜ</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11, fontFamily: '"DM Mono", monospace' }}>DOANH THU</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {stats.staffShiftSummary.map((s) => (
+                                            <TableRow key={s.userId} hover sx={{ '&:last-child td': { border: 0 } }}>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: 140 }}>
+                                                        {s.fullName}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary"
+                                                        sx={{ fontFamily: '"DM Mono", monospace' }}>
+                                                        {s.role}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontFamily: '"DM Mono", monospace', fontSize: 13, fontWeight: 700 }}>
+                                                    {s.totalShifts}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontFamily: '"DM Mono", monospace', fontSize: 12, color: 'text.secondary' }}>
+                                                    {Number(s.totalHours).toFixed(1)}h
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontFamily: '"DM Mono", monospace', fontSize: 12, color: COLORS.green, fontWeight: 600 }}>
+                                                    {fmtVND(s.totalRevenue)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+                    </Paper>
+                </Grid>
             </Grid>
 
             {/* Low Stock Dialog */}

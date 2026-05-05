@@ -4,6 +4,8 @@ using CaPheMinhHuu.DTOs.Order;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
+using CaPheMinhHuu.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace CaPheMinhHuu.Services.Implements
 {
@@ -16,22 +18,24 @@ namespace CaPheMinhHuu.Services.Implements
         
         private readonly ILogger<IngredientService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IHubContext<AppHub> _hubContext;
+
         public IngredientService(
             IIngredientRepository ingredientRepo,
             IIngredientUnitRepository unitRepo,
             IInventoryBatchRepository batchRepo,
             IRecipeRepository recipeRepo,
-            
             ILogger<IngredientService> logger,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IHubContext<AppHub> hubContext)
         {
             _ingredientRepo = ingredientRepo;
             _unitRepo = unitRepo;
             _batchRepo = batchRepo;
             _recipeRepo = recipeRepo;
-            
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
+            _hubContext = hubContext;
         }
 
         // ========== GET ALL ==========
@@ -474,6 +478,22 @@ namespace CaPheMinhHuu.Services.Implements
             await _batchRepo.SaveChangesAsync();
 
             _logger.LogInformation("Trừ kho NL #{Id}: {Qty} đơn vị (FIFO)", ingredientId, quantityNeeded);
+
+            // LowStockAlert trigger
+            var ingredient = await _ingredientRepo.GetByIdAsync(ingredientId);
+            var totalRemaining = await _batchRepo.GetTotalStockAsync(ingredientId);
+            if (ingredient != null && totalRemaining <= ingredient.MinStock)
+            {
+                await _hubContext.Clients.Group("Broadcast").SendAsync("LowStockAlert", new
+                {
+                    ingredientName = ingredient.Name,
+                    remaining      = totalRemaining,
+                    unit           = ingredient.BaseUnit
+                });
+                _logger.LogWarning("LowStock Alert: {Name} còn {Qty} {Unit}",
+                    ingredient.Name, totalRemaining, ingredient.BaseUnit);
+            }
+
             return true;
         }
         public async Task<StockCheckResult> CheckStockForOrderAsync(List<OrderItemDto> items)

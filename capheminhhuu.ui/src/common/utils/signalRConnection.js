@@ -1,45 +1,59 @@
 import * as signalR from '@microsoft/signalr';
 
-// === SignalR Connection Utility — KitchenHub ===
+// === SignalR Connection Utility — AppHub ===
 
-const KITCHEN_HUB_URL = 'https://localhost:7280/kitchenHub';
+const APP_HUB_URL = 'https://localhost:7280/appHub';
 
 let connection = null;
+
+const getToken = () =>
+    localStorage.getItem('adminToken') ||
+    localStorage.getItem('staffToken') ||
+    localStorage.getItem('token') ||
+    '';
 
 /**
  * Khởi tạo và bắt đầu kết nối SignalR tới KitchenHub.
  * Tự động reconnect nếu mất kết nối.
  */
 export const startConnection = async () => {
-    if (connection && connection.state === signalR.HubConnectionState.Connected) {
-        console.log('[SignalR] Đã kết nối sẵn.');
+    // Guard: trả về luôn nếu đang Connected / Connecting / Reconnecting
+    if (connection && (
+        connection.state === signalR.HubConnectionState.Connected ||
+        connection.state === signalR.HubConnectionState.Connecting ||
+        connection.state === signalR.HubConnectionState.Reconnecting
+    )) {
         return connection;
     }
 
-    connection = new signalR.HubConnectionBuilder()
-        .withUrl(KITCHEN_HUB_URL)
-        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000]) // retry: ngay, 2s, 5s, 10s, 30s
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
+    if (connection && connection.state === signalR.HubConnectionState.Disconnecting) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        connection = null;
+    }
 
-    // Event: Reconnecting
+    // Chỉ tạo HubConnection mới khi chưa có (tránh overwrite object cũ)
+    if (!connection) {
+        connection = new signalR.HubConnectionBuilder()
+            .withUrl(`${APP_HUB_URL}?access_token=${getToken()}`)
+            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+    }
+
+    // Re-register lifecycle listeners (sau mỗi lần start)
     connection.onreconnecting((error) => {
         console.warn('[SignalR] Đang kết nối lại...', error);
     });
-
-    // Event: Reconnected
     connection.onreconnected((connectionId) => {
         console.log('[SignalR] Đã kết nối lại! ID:', connectionId);
     });
-
-    // Event: Closed
     connection.onclose((error) => {
         console.error('[SignalR] Mất kết nối.', error);
     });
 
     try {
         await connection.start();
-        console.log('[SignalR] Kết nối KitchenHub thành công!');
+        console.log('[SignalR] Kết nối AppHub thành công!');
         return connection;
     } catch (err) {
         console.error('[SignalR] Lỗi kết nối:', err);
@@ -52,11 +66,16 @@ export const startConnection = async () => {
  * @param {function} callback - Nhận OrderViewDto object
  */
 export const onReceiveNewOrder = (callback) => {
-    if (!connection) return;
-    connection.on('ReceiveNewOrder', (orderViewDto) => {
+    if (!connection) {
+        console.warn('[SignalR] onReceiveNewOrder: connection chưa sẵn sàng');
+        return () => {};
+    }
+    const handler = (orderViewDto) => {
         console.log('[SignalR] Đơn mới:', orderViewDto);
         callback(orderViewDto);
-    });
+    };
+    connection.on('ReceiveNewOrder', handler);
+    return () => connection.off('ReceiveNewOrder', handler);
 };
 
 /**
@@ -64,11 +83,16 @@ export const onReceiveNewOrder = (callback) => {
  * @param {function} callback - Nhận (orderId: number, status: string)
  */
 export const onOrderStatusUpdated = (callback) => {
-    if (!connection) return;
-    connection.on('OrderStatusUpdated', (orderId, status) => {
-        console.log(`[SignalR] Đơn #${orderId} → ${status}`);
+    if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+        console.warn('[SignalR] onOrderStatusUpdated: connection chưa sẵn sàng');
+        return () => {};
+    }
+    const handler = (orderId, status) => {
+        console.log('[SignalR] Đơn #' + orderId + ' → ' + status);
         callback(orderId, status);
-    });
+    };
+    connection.on('OrderStatusUpdated', handler);
+    return () => connection.off('OrderStatusUpdated', handler);
 };
 
 /**
@@ -76,7 +100,80 @@ export const onOrderStatusUpdated = (callback) => {
  */
 export const stopConnection = async () => {
     if (connection) {
-        await connection.stop();
-        console.log('[SignalR] Đã ngắt kết nối.');
+        try {
+            await connection.stop();
+        } finally {
+            connection = null;
+            console.log('[SignalR] Đã ngắt kết nối.');
+        }
     }
+};
+
+/**
+ * Đăng ký listener khi ca được Admin duyệt.
+ * @param {function} callback - Nhận { shiftId, adminName, message }
+ */
+export const onShiftApproved = (callback) => {
+    if (!connection) {
+        console.warn('[SignalR] onShiftApproved: connection chưa sẵn sàng');
+        return () => {};
+    }
+    const handler = (data) => {
+        console.log('[SignalR] ShiftApproved:', data);
+        callback(data);
+    };
+    connection.on('ShiftApproved', handler);
+    return () => connection.off('ShiftApproved', handler);
+};
+
+/**
+ * Đăng ký listener khi ca bị Admin từ chối.
+ * @param {function} callback - Nhận { shiftId, reason, message }
+ */
+export const onShiftRejected = (callback) => {
+    if (!connection) {
+        console.warn('[SignalR] onShiftRejected: connection chưa sẵn sàng');
+        return () => {};
+    }
+    const handler = (data) => {
+        console.log('[SignalR] ShiftRejected:', data);
+        callback(data);
+    };
+    connection.on('ShiftRejected', handler);
+    return () => connection.off('ShiftRejected', handler);
+};
+
+/**
+ * Đăng ký listener khi có cảnh báo tồn kho thấp.
+ * @param {function} callback - Nhận { ingredientName, remaining, unit }
+ */
+export const onLowStockAlert = (callback) => {
+    if (!connection) {
+        console.warn('[SignalR] onLowStockAlert: connection chưa sẵn sàng');
+        return () => {};
+    }
+    const handler = (data) => {
+        console.warn('[SignalR] LowStock:', data);
+        callback(data);
+    };
+    connection.on('LowStockAlert', handler);
+    return () => connection.off('LowStockAlert', handler);
+};
+
+/**
+ * Đợi connection đạt trạng thái Connected rồi gọi callback.
+ * Trả về cleanup function (để dùng trong useEffect return).
+ */
+export const onConnectionReady = (callback) => {
+    if (connection && connection.state === signalR.HubConnectionState.Connected) {
+        callback();
+        return () => {};
+    }
+    const interval = setInterval(() => {
+        if (connection && connection.state === signalR.HubConnectionState.Connected) {
+            clearInterval(interval);
+            callback();
+        }
+    }, 200);
+    return () => clearInterval(interval);
 };

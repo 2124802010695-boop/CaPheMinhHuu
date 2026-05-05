@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Shift;
+using CaPheMinhHuu.DTOs.Shift;
 using CaPheMinhHuu.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,8 +12,8 @@ namespace CaPheMinhHuu.Controllers
     public class ShiftController : ControllerBase
     {
         private readonly IShiftService _shiftService;
-        private readonly IHubContext<ShiftHub> _shiftHub;
-        public ShiftController(IShiftService shiftService, IHubContext<ShiftHub> shiftHub)
+        private readonly IHubContext<AppHub> _shiftHub;
+        public ShiftController(IShiftService shiftService, IHubContext<AppHub> shiftHub)
         {
             _shiftService = shiftService;
             _shiftHub = shiftHub;

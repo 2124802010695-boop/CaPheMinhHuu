@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './common/components/ProtectedRoute';
 
 import PortalSelection from './modules/auth/PortalSelection';
@@ -14,6 +15,7 @@ import QuanLyDanhMuc from './modules/admin/pages/QuanLyDanhMuc';
 import QuanLyDanhMucNguyenLieu from './modules/admin/pages/QuanLyDanhMucNguyenLieu';
 import QuanLyKho from './modules/admin/pages/QuanLyKho';
 import QuanLyNhanVien from './modules/admin/pages/QuanLyNhanVien';
+import QuanLyKhuVucBan from './modules/admin/pages/QuanLyKhuVucBan';
 import QuanLyCaLamViec from './modules/admin/pages/QuanLyCaLamViec';
 import SecurityDashboard from './modules/admin/pages/SecurityDashboard';
 
@@ -31,6 +33,7 @@ import KDS_Bep from './modules/kitchen/pages/KDS_Bep';
 function App() {
     return (
         <BrowserRouter>
+            <Toaster position="top-right" />
             <Routes>
                 <Route path="/" element={<PortalSelection />} />
                 <Route path="/login" element={<PortalSelection />} />
@@ -52,6 +55,7 @@ function App() {
                     <Route path="quanlynhanvien" element={<QuanLyNhanVien />} />
                     <Route path="quanlycalamviec" element={<QuanLyCaLamViec />} />
                     <Route path="baomat" element={<SecurityDashboard />} />
+                    <Route path="quanlykhuvucban" element={<QuanLyKhuVucBan />} />
                 </Route>
 
                 <Route path="cashier" element={

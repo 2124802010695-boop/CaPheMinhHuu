@@ -14,7 +14,7 @@ namespace CaPheMinhHuu.Services.Implements
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productRepository;
-        private readonly IHubContext<KitchenHub> _hubContext;
+        private readonly IHubContext<AppHub> _hubContext;
         private readonly IIngredientService _ingredientService;
         private readonly ITableRepository _tableRepository;
 
@@ -22,7 +22,7 @@ namespace CaPheMinhHuu.Services.Implements
         public OrderService(
             IOrderRepository orderRepository,
             IProductRepository productRepository,
-            IHubContext<KitchenHub> hubContext,
+            IHubContext<AppHub> hubContext,
             IIngredientService ingredientService,
             ITableRepository tableRepository,
             ILogger<OrderService> logger)
@@ -141,7 +141,7 @@ namespace CaPheMinhHuu.Services.Implements
         }
         private static readonly Dictionary<string, string[]> _allowedTransitions = new()
         {
-            ["Pending"] = new[] { "Preparing", "Cancelled" },
+            ["Pending"] = new[] { "Preparing", "Cancelled", "Completed" },
             ["Preparing"] = new[] { "Ready", "Cancelled" },
             ["Ready"] = new[] { "Served" },
             ["Served"] = new[] { "Completed" },

@@ -68,6 +68,9 @@ builder.Services.AddScoped<IIngredientCategoryService, IngredientCategoryService
 // Table
 builder.Services.AddScoped<ITableRepository, TableRepository>();
 builder.Services.AddScoped<ITableService, TableService>();
+// Area
+builder.Services.AddScoped<IAreaRepository, AreaRepository>();
+builder.Services.AddScoped<IAreaService, AreaService>();
 // Staff 
 builder.Services.AddScoped<IStaffService, StaffService>();
 // Order
@@ -179,10 +182,23 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/appHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 // Đăng ký AuditLogActionFilter
 builder.Services.AddScoped<AuditLogActionFilter>();
-builder.Services.AddHttpContextAccessor();
 
 
 var app = builder.Build();
@@ -217,6 +233,7 @@ app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<KitchenHub>("/kitchenHub");
 app.MapHub<ShiftHub>("/shiftHub");
+app.MapHub<AppHub>("/appHub");
 app.UseStaticFiles();
 
 

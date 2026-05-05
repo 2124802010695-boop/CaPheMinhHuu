@@ -1,4 +1,4 @@
-﻿namespace CaPheMinhHuu.DTOs.Table
+namespace CaPheMinhHuu.DTOs.Table
 {
     public class TableResponseDto
     {
@@ -11,5 +11,6 @@
         public int Seats { get; set; }
         public string Status { get; set; } = null!;
         public string? QRCode { get; set; }
+        public int? CurrentOrderId { get; set; }
     }
 }

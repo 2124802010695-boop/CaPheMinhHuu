@@ -29,6 +29,7 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Tables
                 .Include(t => t.AreaNavigation)
+                .Include(t => t.Orders)
                 .Where(t => !t.IsDeleted)
                 .OrderBy(t => t.AreaNavigation != null ? t.AreaNavigation.DisplayOrder : 999)
                 .ThenBy(t => t.Number)

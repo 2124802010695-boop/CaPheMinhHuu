@@ -77,6 +77,7 @@ const OrderCard = ({ order, onAction }) => {
                     {(order.items || []).map((item, idx) => (
                         <div key={idx} className="text-white text-base">
                             {item.quantity}x {item.productName}
+                            {item.note && <p style={{fontSize:'12px', color:'#888', margin:'2px 0 0 0'}}>📝 {item.note}</p>}
                         </div>
                     ))}
                 </div>
@@ -116,7 +117,7 @@ export default function KDSScreen() {
             const activeOrders = (data || []).filter(o =>
                 o.status === 'Pending' || o.status === 'Preparing'
             );
-            setOrders(activeOrders);
+            setOrders([...activeOrders].sort((a, b) => new Date(a.orderDate) - new Date(b.orderDate)));
         } catch (err) {
             console.error('Lỗi tải đơn hàng:', err);
         }
@@ -125,19 +126,21 @@ export default function KDSScreen() {
 
     useEffect(() => {
         fetchOrders();
+        let offStatus = () => {};
+        let offNew    = () => {};
 
         const connectSignalR = async () => {
             try {
                 await startConnection();
                 setConnected(true);
 
-                onReceiveNewOrder((newOrder) => {
+                offNew    = onReceiveNewOrder((newOrder) => {
                     if (newOrder.status === 'Pending' || newOrder.status === 'Preparing') {
-                        setOrders(prev => [newOrder, ...prev]);
+                        setOrders(prev => [...prev, newOrder].sort((a, b) => new Date(a.orderDate) - new Date(b.orderDate)));
                     }
-                });
+                }) || (() => {});
 
-                onOrderStatusUpdated((orderId, status) => {
+                offStatus = onOrderStatusUpdated((orderId, status) => {
                     if (status === 'Ready' || status === 'Served' || status === 'Completed' || status === 'Cancelled') {
                         setOrders(prev => prev.filter(o => o.id !== orderId));
                     } else {
@@ -145,7 +148,7 @@ export default function KDSScreen() {
                             o.id === orderId ? { ...o, status } : o
                         ));
                     }
-                });
+                }) || (() => {});
 
             } catch (err) {
                 console.error('SignalR connection failed:', err);
@@ -154,7 +157,7 @@ export default function KDSScreen() {
         };
 
         connectSignalR();
-        return () => { stopConnection(); };
+        return () => { offStatus(); offNew(); stopConnection(); };
     }, [fetchOrders]);
 
     const handleAction = async (orderId, nextStatus) => {
