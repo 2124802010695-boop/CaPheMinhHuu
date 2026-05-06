@@ -38,6 +38,9 @@ export default function LayoutCashier() {
             if (res && res.id && res.status === 'Open') {
                 setShiftStatus('open');
                 setCurrentShift(res);
+            } else if (res && res.id && res.status === 'PendingOpen') {
+                setShiftStatus('pending');
+                setCurrentShift(res);
             } else {
                 setShiftStatus('none');
                 setCurrentShift(null);
@@ -61,7 +64,11 @@ export default function LayoutCashier() {
     }, [checkShift]);
 
     useEffect(() => {
-        if (shiftStatus === 'open') {
+        startConnection().catch(console.error);
+    }, []);
+
+    useEffect(() => {
+        if (shiftStatus === 'open' || shiftStatus === 'pending') {
             let offApproved = () => {};
             let offRejected = () => {};
 
@@ -75,27 +82,27 @@ export default function LayoutCashier() {
                 });
             });
 
-            startConnection().catch(console.error);
-
             return () => {
                 offApproved();
                 offRejected();
                 cleanupReady();
-                stopConnection();
             };
         }
     }, [shiftStatus, checkShift]);
 
     // Redirect sang shift-open nếu chưa mở ca và đang ở route không exempt
     useEffect(() => {
-        if (shiftStatus === 'none' && !SHIFT_EXEMPT_PATHS.includes(location.pathname)) {
+        if (
+            (shiftStatus === 'none' || shiftStatus === 'pending') && 
+            !SHIFT_EXEMPT_PATHS.includes(location.pathname)
+        ) {
             navigate('/cashier/shift-open', { replace: true });
         }
     }, [shiftStatus, location.pathname, navigate]);
 
     // Khi ca được duyệt (shiftStatus đổi thành 'open') → tự động vào POS
     useEffect(() => {
-        if (shiftStatus === 'open' && SHIFT_EXEMPT_PATHS.includes(location.pathname)) {
+        if (shiftStatus === 'open' && location.pathname === '/cashier/shift-open') {
             navigate('/cashier/pos', { replace: true });
         }
     }, [shiftStatus, location.pathname, navigate]);
@@ -131,6 +138,7 @@ export default function LayoutCashier() {
             localStorage.removeItem('staffToken');
             localStorage.removeItem('staffUser');
             localStorage.removeItem('staffRefreshToken');
+            stopConnection();
             navigate('/staff/login');
         }
     };
@@ -148,7 +156,7 @@ export default function LayoutCashier() {
     }
 
     // === Chưa mở ca → Hiển thị ShiftOpen (Outlet) với layout tối giản ===
-    if (shiftStatus === 'none') {
+    if (shiftStatus === 'none' || shiftStatus === 'pending') {
         return (
             <div className="h-screen w-full bg-[#131313] flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
                 {/* Header tối giản */}

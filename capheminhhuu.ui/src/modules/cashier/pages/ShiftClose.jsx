@@ -52,7 +52,7 @@ export default function ShiftClose() {
             await closeShiftAPI(currentShift.id, amount);
             alert('Đóng ca thành công!');
             // Sau khi đóng ca thì chuyển về xem báo cáo / pos
-            navigate('/cashier/shift-report');
+            navigate(`/cashier/shift-report?shiftId=${currentShift.id}`);
         } catch (error) {
             console.error('Lỗi khi đóng ca:', error);
             const msg = error.response?.data?.message || 'Không thể đóng ca vào lúc này.';

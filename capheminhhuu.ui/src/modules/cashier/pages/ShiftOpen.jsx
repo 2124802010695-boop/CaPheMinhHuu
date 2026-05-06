@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { requestOpenShiftAPI } from '../services/shiftService';
+import { requestOpenShiftAPI, getCurrentShiftAPI } from '../services/shiftService';
 
 export default function ShiftOpen() {
     const [openingCashRaw, setOpeningCashRaw] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isPending, setIsPending] = useState(false);
     const navigate = useNavigate();
     
+    useEffect(() => {
+        const checkPendingState = async () => {
+            try {
+                const res = await getCurrentShiftAPI();
+                if (res && res.id && res.status === 'PendingOpen') {
+                    setIsPending(true);
+                }
+            } catch (err) {
+                // Ignore error
+            }
+        };
+        checkPendingState();
+    }, []);
+
     // Lấy callback từ LayoutCashier để re-check shift sau khi mở ca
     const outletContext = useOutletContext() || {};
     const onShiftOpened = outletContext.onShiftOpened;
@@ -38,7 +53,7 @@ export default function ShiftOpen() {
             if (onShiftOpened) {
                 await onShiftOpened();
             }
-            navigate('/cashier/pos');
+            setIsPending(true);
         } catch (error) {
             console.error('Lỗi khi mở ca:', error);
             const msg = error.response?.data?.message || 'Không thể mở ca vào lúc này.';
@@ -46,6 +61,18 @@ export default function ShiftOpen() {
         }
         setLoading(false);
     };
+
+    if (isPending) {
+        return (
+            <div className="p-8 max-w-2xl mx-auto h-full flex flex-col justify-center">
+                <div className="bg-[#1c1b1b] rounded-xl p-8 border border-[#3c4a42]/5 shadow-2xl flex flex-col items-center text-center">
+                    <div className="w-16 h-16 border-4 border-[#4edea3] border-t-transparent rounded-full animate-spin mb-6" />
+                    <h3 className="text-2xl font-bold text-[#e5e2e1] mb-3">Yêu cầu mở ca đã được gửi</h3>
+                    <p className="text-[#86948a]">Vui lòng chờ Admin duyệt ca. Hệ thống sẽ tự động chuyển trang.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 max-w-2xl mx-auto h-full flex flex-col justify-center">
