@@ -4,7 +4,7 @@ namespace CaPheMinhHuu.DTOs.Table
     {
         public int Number { get; set; }
         public int Seats { get; set; }
-        public string Status { get; set; } = null!; // Empty, Occupied, Reserved
+        public string? Status { get; set; } // Empty, Occupied, Reserved — nullable: chỉ update nếu client gửi
         public int? AreaId { get; set; }
     }
 }

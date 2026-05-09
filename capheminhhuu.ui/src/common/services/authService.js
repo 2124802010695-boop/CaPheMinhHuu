@@ -56,3 +56,11 @@ export const staffLoginAPI = async (staffCode, password) => {
         rememberMe: true
     });
 };
+
+export const registerTabAPI = async (tabId) => {
+    return axios.post('/Auth/register-tab', { tabId });
+};
+
+export const revokeTabAPI = async (tabId, reason = 'Manual') => {
+    return axios.post('/Auth/revoke-tab', { tabId, reason });
+};

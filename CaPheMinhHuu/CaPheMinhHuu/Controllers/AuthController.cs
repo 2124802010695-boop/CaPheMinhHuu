@@ -11,10 +11,13 @@ namespace CaPheMinhHuu.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IActiveSessionRepository _sessionRepo;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService,
+            IActiveSessionRepository sessionRepo)
         {
             _authService = authService;
+            _sessionRepo = sessionRepo;
         }
 
         [HttpPost("login")]
@@ -113,6 +116,59 @@ namespace CaPheMinhHuu.Controllers
             if (!result)
                 return BadRequest(new { message = "Mật khẩu cũ không đúng hoặc tài khoản không tồn tại" });
             return Ok(new { message = "Đổi mật khẩu thành công" });
+        }
+        // POST: api/Auth/register-tab
+        [HttpPost("register-tab")]
+        [Authorize]
+        public async Task<IActionResult> RegisterTab([FromBody] RegisterTabRequest request)
+        {
+            var userIdClaim = HttpContext.User.FindFirst("id")?.Value;
+            var roleClaim = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                return Unauthorized();
+
+            // Deactivate tất cả session cũ cùng TabId — giữ lịch sử
+            var existingSessions = await _sessionRepo.GetActiveByTabIdAsync(request.TabId);
+            foreach (var s in existingSessions)
+            {
+                s.IsActive = false;
+                s.LogoutAt = DateTime.Now;
+                s.LogoutReason = "Replaced";
+                await _sessionRepo.UpdateAsync(s);
+            }
+
+            // Tạo record mới
+            var session = new CaPheMinhHuu.Models.ActiveSession
+            {
+                UserId = userId,
+                TabId = request.TabId,
+                Role = roleClaim ?? "Unknown",
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = HttpContext.Request.Headers["User-Agent"].ToString(),
+                LoginAt = DateTime.Now,
+                LastSeen = DateTime.Now,
+                IsActive = true
+            };
+
+            await _sessionRepo.AddAsync(session);
+            return Ok(new { message = "Tab registered", tabId = request.TabId });
+        }
+
+        // POST: api/Auth/revoke-tab
+        [HttpPost("revoke-tab")]
+        [Authorize]
+        public async Task<IActionResult> RevokeTab([FromBody] RevokeTabRequest request)
+        {
+            var session = await _sessionRepo.GetByTabIdAsync(request.TabId);
+            if (session == null) return NotFound();
+
+            session.IsActive = false;
+            session.LogoutAt = DateTime.Now;
+            session.LogoutReason = request.Reason ?? "Manual";
+            await _sessionRepo.UpdateAsync(session);
+
+            return Ok(new { message = "Tab revoked" });
         }
     }
 }

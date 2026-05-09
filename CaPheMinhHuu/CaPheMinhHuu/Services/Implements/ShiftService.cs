@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.DTOs.Shift;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
@@ -42,14 +42,22 @@ namespace CaPheMinhHuu.Services.Implements
             var closeTime = DateTime.Now;
 
             var ordersInShift = await _shiftRepository
-                .GetOrdersInShiftAsync(cashierId, shift.OpenTime, closeTime);
+                .GetOrdersInShiftAsync(shift.OpenTime, closeTime);
+
+            var hasActiveOrders = ordersInShift.Any(o => 
+                o.Status == "Pending" || o.Status == "Preparing");
+            if (hasActiveOrders)
+                throw new InvalidOperationException(
+                    "Còn đơn hàng chưa hoàn thành (Đang chờ hoặc Đang pha chế). Vui lòng xử lý hết đơn trước khi đóng ca.");
+
+            var completedOrders = ordersInShift.Where(o => o.Status == "Completed").ToList();
 
             shift.CloseTime = closeTime;
             shift.ClosingCash = dto.ClosingCash;
-            shift.TotalOrders = ordersInShift.Count;
-            shift.TotalRevenue = ordersInShift.Sum(o => o.TotalAmount);
+            shift.TotalOrders = completedOrders.Count;
+            shift.TotalRevenue = completedOrders.Sum(o => o.TotalAmount);
 
-            var cashRevenue = ordersInShift
+            var cashRevenue = completedOrders
                 .Where(o => o.PaymentMethod == "Cash")
                 .Sum(o => o.TotalAmount);
 
@@ -58,13 +66,21 @@ namespace CaPheMinhHuu.Services.Implements
 
             await _shiftRepository.UpdateAsync(shift);
 
-            return MapToViewDto(shift);
+            return MapToViewDto(shift, cashRevenue);
         }
         public async Task<ShiftViewDto?> GetCurrentShiftAsync(int userId)
         {
             var shift = await _shiftRepository.GetOpenShiftByUserAsync(userId);
+            if (shift == null) return null;
 
-            return shift == null ? null : MapToViewDto(shift);
+            var ordersInShift = await _shiftRepository
+                .GetOrdersInShiftAsync(shift.OpenTime, DateTime.Now);
+            var completedOrders = ordersInShift.Where(o => o.Status == "Completed").ToList();
+            var cashRevenue = completedOrders
+                .Where(o => o.PaymentMethod == "Cash")
+                .Sum(o => o.TotalAmount);
+
+            return MapToViewDto(shift, cashRevenue);
         }
         public async Task<ZReportDto> GetZReportAsync(int shiftId, int userId)
         {
@@ -115,13 +131,13 @@ namespace CaPheMinhHuu.Services.Implements
         {
             var shifts = await _shiftRepository.GetPendingShiftsAsync();
 
-            return shifts.Select(MapToViewDto).ToList();
+            return shifts.Select(s => MapToViewDto(s)).ToList();
         }
         public async Task<List<ShiftViewDto>> GetAllShiftsAsync(string? status = null)
         {
             var shifts = await _shiftRepository.GetAllAsync(status);
 
-            return shifts.Select(MapToViewDto).ToList();
+            return shifts.Select(s => MapToViewDto(s)).ToList();
         }
         public async Task<ZReportDto> AdminGetZReportAsync(int shiftId)
         {
@@ -141,13 +157,14 @@ namespace CaPheMinhHuu.Services.Implements
 
             var closeTime = DateTime.Now;
             var ordersInShift = await _shiftRepository
-                .GetOrdersInShiftAsync(shift.UserId, shift.OpenTime, closeTime);
+                .GetOrdersInShiftAsync(shift.OpenTime, closeTime);
+            var completedOrders = ordersInShift.Where(o => o.Status == "Completed").ToList();
 
             shift.CloseTime = closeTime;
             shift.ClosingCash = 0;
             shift.AdminId = adminId;
-            shift.TotalOrders = ordersInShift.Count;
-            shift.TotalRevenue = ordersInShift.Sum(o => o.TotalAmount);
+            shift.TotalOrders = completedOrders.Count;
+            shift.TotalRevenue = completedOrders.Sum(o => o.TotalAmount);
             shift.Difference = null; // Admin force close — không tính chênh lệch
             shift.Status = "Closed";
 
@@ -163,9 +180,10 @@ namespace CaPheMinhHuu.Services.Implements
             var closeTime = shift.CloseTime ?? DateTime.Now;
 
             var ordersInShift = await _shiftRepository
-                .GetOrdersInShiftAsync(shift.UserId, shift.OpenTime, closeTime);
+                .GetOrdersInShiftAsync(shift.OpenTime, closeTime);
+            var completedOrders = ordersInShift.Where(o => o.Status == "Completed").ToList();
 
-            var paymentBreakdown = ordersInShift
+            var paymentBreakdown = completedOrders
                 .GroupBy(o => o.PaymentMethod)
                 .Select(g => new PaymentBreakdownItem
                 {
@@ -174,7 +192,7 @@ namespace CaPheMinhHuu.Services.Implements
                     Amount = g.Sum(o => o.TotalAmount)
                 }).ToList();
 
-            var topProducts = ordersInShift
+            var topProducts = completedOrders
                 .SelectMany(o => o.OrderItems)
                 .GroupBy(oi => oi.Product.Name)
                 .Select(g => new TopProductItem
@@ -197,13 +215,13 @@ namespace CaPheMinhHuu.Services.Implements
                 OpeningCash = shift.OpeningCash,
                 ClosingCash = shift.ClosingCash ?? 0,
                 Difference = shift.Difference,
-                TotalOrders = ordersInShift.Count,
-                TotalRevenue = ordersInShift.Sum(o => o.TotalAmount),
+                TotalOrders = completedOrders.Count,
+                TotalRevenue = completedOrders.Sum(o => o.TotalAmount),
                 PaymentBreakdown = paymentBreakdown,
                 TopProducts = topProducts
             };
         }
-        private ShiftViewDto MapToViewDto(Shift shift)
+        private ShiftViewDto MapToViewDto(Shift shift, decimal cashRevenue = 0)
         {
             return new ShiftViewDto
             {
@@ -219,6 +237,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Difference = shift.Difference,
                 TotalOrders = shift.TotalOrders,
                 TotalRevenue = shift.TotalRevenue,
+                CashRevenue = cashRevenue,
                 Status = shift.Status,
                 RejectReason = shift.RejectReason
             };

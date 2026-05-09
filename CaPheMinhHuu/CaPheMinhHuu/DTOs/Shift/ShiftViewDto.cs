@@ -1,4 +1,4 @@
-﻿namespace CaPheMinhHuu.DTOs.Shift
+namespace CaPheMinhHuu.DTOs.Shift
 {
     public class ShiftViewDto
     {
@@ -12,6 +12,7 @@
         public decimal? Difference { get; set; }
         public int? TotalOrders { get; set; }
         public decimal? TotalRevenue { get; set; }
+        public decimal CashRevenue { get; set; }
         public string Status { get; set; } = "Open";
         public int? AdminId { get; set; }
         public string? AdminName { get; set; }

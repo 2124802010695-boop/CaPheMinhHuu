@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Models;
+using CaPheMinhHuu.Models;
 
 namespace CaPheMinhHuu.Interfaces
 {
@@ -13,6 +13,6 @@ namespace CaPheMinhHuu.Interfaces
         Task UpdateAsync(Shift shift);
         Task LoadUserAsync(Shift shift);
         Task LoadAdminAsync(Shift shift);
-        Task<List<Order>> GetOrdersInShiftAsync(int userId, DateTime openTime, DateTime closeTime);
+        Task<List<Order>> GetOrdersInShiftAsync(DateTime openTime, DateTime closeTime, int? shiftId = null);
     }
 }

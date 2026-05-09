@@ -1,11 +1,11 @@
-﻿using CaPheMinhHuu.DTOs.Product;
+using CaPheMinhHuu.DTOs.Product;
 using CaPheMinhHuu.Models;
 
 namespace CaPheMinhHuu.Interfaces
 {
     public interface IProductService
     {
-        Task<IEnumerable<ProductViewDto>> GetAllProductsAsync();
+        Task<IEnumerable<ProductViewDto>> GetAllProductsAsync(bool includeDeleted = false);
         Task<ProductViewDto> CreateProductAsync(ProductCreateDto dto);
         Task<bool> DeleteProductAsync(int id);
         Task<bool> UpdateProductAsync(int id, ProductUpdateDto dto);

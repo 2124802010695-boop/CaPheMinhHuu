@@ -1,4 +1,5 @@
 import axios from "axios";
+import tabManager from './tabManager';
 
 const instance = axios.create({
     baseURL: 'https://localhost:7280/api',
@@ -6,14 +7,12 @@ const instance = axios.create({
 
 // ======= HELPER: Xác định portal hiện tại =======
 const getTokenKeys = () => {
-    // Ưu tiên admin, sau đó staff, cuối cùng token generic
-    if (localStorage.getItem("adminToken")) {
+    const path = window.location.pathname;
+    if (path.startsWith("/admin")) {
         return { tokenKey: "adminToken", refreshKey: "adminRefreshToken", userKey: "adminUser" };
     }
-    if (localStorage.getItem("staffToken")) {
-        return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
-    }
-    return { tokenKey: "token", refreshKey: "refreshToken", userKey: "user" };
+    // Cashier (/cashier/*), Kitchen (/Bep), Staff — dùng staffToken
+    return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
 };
 
 // ======= REQUEST INTERCEPTOR =======
@@ -22,6 +21,11 @@ instance.interceptors.request.use(function (config) {
     const token = localStorage.getItem(tokenKey);
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Gắn TabId vào mọi request để backend tracking
+    const tabId = tabManager.getTabId();
+    if (tabId) {
+        config.headers['X-Tab-Id'] = tabId;
     }
     return config;
 }, function (error) {
@@ -77,21 +81,6 @@ instance.interceptors.response.use(
             isRefreshing = true;
 
             const { tokenKey, refreshKey, userKey } = getTokenKeys();
-            const getTokenKeys = () => {
-         const path = window.location.pathname;
-    
-                if (path.startsWith("/admin")) {
-                    return { tokenKey: "adminToken", refreshKey: "adminRefreshToken", userKey: "adminUser" };
-                }
-                if (path.startsWith("/cashier") || path.startsWith("/kitchen")) {
-                    return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
-                }
-                // Fallback
-                if (localStorage.getItem("adminToken")) {
-                    return { tokenKey: "adminToken", refreshKey: "adminRefreshToken", userKey: "adminUser" };
-                }
-                return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
-};
             const refreshToken = localStorage.getItem(refreshKey);
 
 
@@ -138,15 +127,13 @@ instance.interceptors.response.use(
 
 // Helper: Force logout khi refresh token cũng hết hạn
 function handleForceLogout(tokenKey, refreshKey, userKey) {
+    // Không gọi revoke-tab ở đây vì token đã invalid
+    // revoke-tab sẽ được gọi khi user logout chủ động
     localStorage.removeItem(tokenKey);
     localStorage.removeItem(refreshKey);
     localStorage.removeItem(userKey);
 
-    // Redirect về login tương ứng
-    const isAdmin = tokenKey === "adminToken";
-    const loginPath = isAdmin ? "/admin/login" : "/staff/login";
-
-    // Chỉ redirect nếu đang ở trang cần auth
+    const loginPath = "/login";
     if (!window.location.pathname.includes('/login') && window.location.pathname !== '/') {
         window.location.href = loginPath;
     }

@@ -65,7 +65,7 @@ export default function TableManagement() {
         if (!window.confirm('Xác nhận trả bàn ' + table.number + '? Bàn sẽ về trạng thái trống.')) return;
         try {
             await updateTableStatusAPI(table.id, 'Empty');
-            fetchTables();
+            await fetchTables();
             setSelectedTable(null);
         } catch {
             alert('Lỗi trả bàn, thử lại');

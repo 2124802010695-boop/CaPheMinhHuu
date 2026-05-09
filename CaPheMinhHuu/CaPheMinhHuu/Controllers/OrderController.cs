@@ -26,9 +26,14 @@ namespace CaPheMinhHuu.Controllers
                 var userIdClaim = User.FindFirst("id")?.Value;
                 if (string.IsNullOrEmpty(userIdClaim))
                     return Unauthorized("Không xác định được người dùng");
-
                 int userId = int.Parse(userIdClaim);
-                var result = await _orderService.CreateOrderAsync(dto, userId);
+
+                int? shiftId = null;
+                var shiftIdClaim = User.FindFirst("shiftId")?.Value;
+                if (!string.IsNullOrEmpty(shiftIdClaim) && int.TryParse(shiftIdClaim, out int parsedShiftId))
+                    shiftId = parsedShiftId;
+
+                var result = await _orderService.CreateOrderAsync(dto, userId, shiftId);
                 return Ok(result);
             }
             

@@ -1,9 +1,17 @@
-﻿namespace CaPheMinhHuu.Interfaces
+namespace CaPheMinhHuu.Interfaces
 {
+    public enum OtpVerifyResult
+    {
+        Success,
+        InvalidCode,
+        Expired,
+        MaxAttemptsReached,
+        AlreadyUsed
+    }
+
     public interface IOtpService
     {
-        Task<string> GenerateOtpAsync(string target, string targetType, string purpose);
-        Task<bool> VerifyOtpAsync(string target, string code, string purpose);
-        Task CleanExpiredOtpsAsync(); // Dọn OTP hết hạn
+        Task GenerateOtpAsync(string target, string purpose);
+        Task<OtpVerifyResult> VerifyOtpAsync(string target, string purpose, string code);
     }
 }

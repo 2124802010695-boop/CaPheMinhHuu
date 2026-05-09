@@ -4,7 +4,7 @@ import {
     Tabs, Tab, Grid, Card, CardContent, CardActions,
     Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, Switch, FormControlLabel, CircularProgress,
-    Tooltip, Divider
+    Tooltip, Divider, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -36,8 +36,8 @@ const QuanLyKhuVucBan = () => {
     const [tables, setTables] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Tab
-    const [activeTab, setActiveTab] = useState(0);
+    // Tab — dùng area.id làm value (tránh lệch index khi thêm/xóa tab)
+    const [activeTab, setActiveTab] = useState(null);
 
     // Modal Area
     const [areaModal, setAreaModal]     = useState(false);
@@ -64,6 +64,8 @@ const QuanLyKhuVucBan = () => {
             ]);
             setAreas(areasRes || []);
             setTables(tablesRes || []);
+            // Point 2: auto-select tab đầu tiên lần đầu load
+            if (areasRes?.length > 0 && activeTab === null) setActiveTab(areasRes[0].id);
         } catch {
             toast.error('Không tải được dữ liệu');
         } finally {
@@ -74,10 +76,15 @@ const QuanLyKhuVucBan = () => {
     useEffect(() => { fetchAll(); }, []);
 
     // ── Derived ────────────────────────────────────────
-    const currentArea = areas[activeTab] ?? null;
-    const tablesInArea = currentArea
-        ? tables.filter(t => t.areaId === currentArea.id)
-        : [];
+    const currentArea = activeTab === 'unassigned'
+        ? null
+        : areas.find(a => a.id === activeTab) ?? null;
+
+    const tablesInArea = activeTab === 'unassigned'
+        ? tables.filter(t => t.areaId === null)
+        : currentArea
+            ? tables.filter(t => t.areaId === currentArea.id)
+            : [];
 
     // ── Area handlers ──────────────────────────────────
     const openAddArea = () => {
@@ -124,8 +131,12 @@ const QuanLyKhuVucBan = () => {
         try {
             await deleteAreaAPI(confirmDialog.item.id);
             toast.success('Đã xóa khu vực');
-            setActiveTab(0);
             await fetchAll();
+            // Reset về area đầu tiên còn lại (value-based)
+            setActiveTab(prev => {
+                const remaining = areas.filter(a => a.id !== confirmDialog.item.id);
+                return remaining.length > 0 ? remaining[0].id : null;
+            });
         } catch {
             toast.error('Lỗi xóa khu vực');
         } finally {
@@ -220,7 +231,9 @@ const QuanLyKhuVucBan = () => {
                                 Quản Lý Khu Vực & Bàn
                             </Typography>
                             <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                                {areas.length} khu vực · {tables.length} bàn
+                                {areas.length} khu vực · {tables.filter(t => t.areaId !== null).length} bàn có khu vực
+                                {tables.some(t => t.areaId === null) &&
+                                    ` · ${tables.filter(t => t.areaId === null).length} chưa phân khu`}
                             </Typography>
                         </Box>
                     </Box>
@@ -250,7 +263,7 @@ const QuanLyKhuVucBan = () => {
                     {/* Tab bar */}
                     <Box sx={{ borderBottom: '1px solid #e5e7eb', bgcolor: '#fff', px: 2 }}>
                         <Tabs
-                            value={activeTab}
+                            value={activeTab ?? areas[0]?.id ?? false}
                             onChange={(_, v) => setActiveTab(v)}
                             variant="scrollable"
                             scrollButtons="auto"
@@ -260,10 +273,10 @@ const QuanLyKhuVucBan = () => {
                                 '& .MuiTabs-indicator': { bgcolor: '#10b981' },
                             }}
                         >
-                            {areas.map((area, idx) => (
+                            {areas.map((area) => (
                                 <Tab
                                     key={area.id}
-                                    value={idx}
+                                    value={area.id}
                                     label={
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             {area.name}
@@ -271,8 +284,8 @@ const QuanLyKhuVucBan = () => {
                                                 label={tables.filter(t => t.areaId === area.id).length}
                                                 size="small"
                                                 sx={{ height: 18, fontSize: '0.65rem',
-                                                    bgcolor: activeTab === idx ? '#d1fae5' : '#f3f4f6',
-                                                    color: activeTab === idx ? '#065f46' : '#6b7280' }}
+                                                    bgcolor: activeTab === area.id ? '#d1fae5' : '#f3f4f6',
+                                                    color: activeTab === area.id ? '#065f46' : '#6b7280' }}
                                             />
                                             {!area.isActive && (
                                                 <Chip label="Tắt" size="small"
@@ -282,6 +295,23 @@ const QuanLyKhuVucBan = () => {
                                     }
                                 />
                             ))}
+                            {tables.some(t => t.areaId === null) && (
+                                <Tab
+                                    value="unassigned"
+                                    label={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            Chưa phân khu
+                                            <Chip
+                                                label={tables.filter(t => t.areaId === null).length}
+                                                size="small"
+                                                sx={{ height: 18, fontSize: '0.65rem',
+                                                    bgcolor: activeTab === 'unassigned' ? '#fef3c7' : '#f3f4f6',
+                                                    color: activeTab === 'unassigned' ? '#92400e' : '#6b7280' }}
+                                            />
+                                        </Box>
+                                    }
+                                />
+                            )}
                         </Tabs>
                     </Box>
 
@@ -394,6 +424,62 @@ const QuanLyKhuVucBan = () => {
                             </Grid>
                         </Box>
                     )}
+                    {activeTab === 'unassigned' && (
+                        <Box sx={{ p: 3, bgcolor: '#fff' }}>
+                            <Typography variant="body2" sx={{ color: '#6b7280', mb: 2 }}>
+                                Các bàn chưa được phân vào khu vực nào. Hãy chỉnh sửa từng bàn để gán khu vực.
+                            </Typography>
+                            <Divider sx={{ mb: 2 }} />
+                            <Grid container spacing={2}>
+                                {tablesInArea.map(table => {
+                                    const s = STATUS_COLORS[table.status] ?? STATUS_COLORS.Empty;
+                                    return (
+                                        <Grid item xs={6} sm={4} md={3} lg={2} key={table.id}>
+                                            <Card
+                                                sx={{
+                                                    border: `1.5px solid ${s.color}`,
+                                                    bgcolor: s.bg,
+                                                    borderRadius: 3,
+                                                    cursor: 'default',
+                                                    transition: 'box-shadow .2s',
+                                                    '&:hover': { boxShadow: 3 }
+                                                }}
+                                            >
+                                                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                        <Typography fontWeight={700} fontSize={15}>
+                                                            Bàn {table.number}
+                                                        </Typography>
+                                                        <TableBarIcon sx={{ color: s.color, fontSize: 20 }} />
+                                                    </Box>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {table.seats} chỗ
+                                                    </Typography>
+                                                    <Box sx={{ mt: 1 }}>
+                                                        <Chip
+                                                            label={table.status === 'Empty' ? 'Trống'
+                                                                : table.status === 'Occupied' ? 'Có khách'
+                                                                : 'Đặt trước'}
+                                                            size="small"
+                                                            sx={{ bgcolor: s.bg, color: s.color, fontWeight: 500, fontSize: '0.7rem' }}
+                                                        />
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5, justifyContent: 'flex-end' }}>
+                                                        <IconButton size="small" onClick={() => openEditTable(table)}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                        <IconButton size="small" color="error" onClick={() => confirmDeleteTable(table)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Box>
+                                                </CardContent>
+                                            </Card>
+                                        </Grid>
+                                    );
+                                })}
+                            </Grid>
+                        </Box>
+                    )}
                 </Paper>
             )}
 
@@ -457,6 +543,22 @@ const QuanLyKhuVucBan = () => {
                         onChange={e => setTableForm(p => ({ ...p, seats: e.target.value }))}
                         inputProps={{ min: 1 }}
                     />
+                    <FormControl fullWidth size="small">
+                        <InputLabel>Khu vực</InputLabel>
+                        <Select
+                            value={tableForm.areaId ?? ''}
+                            label="Khu vực"
+                            onChange={e => setTableForm(p => ({
+                                ...p,
+                                areaId: e.target.value === '' ? null : Number(e.target.value)
+                            }))}
+                        >
+                            <MenuItem value="">— Chưa phân khu —</MenuItem>
+                            {areas.filter(a => a.isActive).map(a => (
+                                <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
                     <Button onClick={() => setTableModal(false)} sx={{ textTransform: 'none', color: '#6b7280' }}>

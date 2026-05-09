@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using CaPheMinhHuu.Middleware;
+using CaPheMinhHuu.Middlewares;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -85,6 +86,21 @@ builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 // AuditLog
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddScoped<IActiveSessionRepository, ActiveSessionRepository>();
+
+// JWT
+builder.Services.AddScoped<IJwtService, JwtService>();
+
+// OTP
+builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+
+// Customer
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+
+// Payment
+builder.Services.AddScoped<IPaymentService, VnPayService>();
 
 // Controllers (gộp JsonOptions + AuditLog filter — chỉ gọi 1 lần duy nhất)
 builder.Services.AddControllers(options =>
@@ -228,6 +244,7 @@ app.Use(async (context, next) =>
 });
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
+app.UseMiddleware<ActiveSessionMiddleware>();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();

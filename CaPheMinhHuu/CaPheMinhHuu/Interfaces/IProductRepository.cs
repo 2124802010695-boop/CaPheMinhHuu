@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Models;
+using CaPheMinhHuu.Models;
 
 namespace CaPheMinhHuu.Interfaces
 {
@@ -9,5 +9,6 @@ namespace CaPheMinhHuu.Interfaces
         Task<bool> DeleteAsync(int id);
         Task UpdateAsync(Product product);
         Task<Product?> GetByIdAsync(int id);
+        Task<IEnumerable<Product>> GetAllIncludingDeletedAsync();
     }
 }

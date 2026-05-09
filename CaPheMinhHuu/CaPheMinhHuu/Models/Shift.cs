@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 namespace CaPheMinhHuu.Models
 {
     public class Shift : BaseEntity
@@ -23,5 +23,7 @@ namespace CaPheMinhHuu.Models
         public User? User { get; set; }
         [ForeignKey("AdminId")]
         public User? Admin { get; set; }
+
+        public bool IsLocked { get; set; } = false;
     }
 }

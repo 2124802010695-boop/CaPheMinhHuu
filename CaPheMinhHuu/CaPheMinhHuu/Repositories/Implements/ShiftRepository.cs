@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -79,12 +79,19 @@ namespace CaPheMinhHuu.Repositories.Implements
             await _context.Entry(shift).Reference(s => s.Admin).LoadAsync();
         }
 
-        public async Task<List<Order>> GetOrdersInShiftAsync(int userId, DateTime openTime, DateTime closeTime)
+        public async Task<List<Order>> GetOrdersInShiftAsync(DateTime openTime, DateTime closeTime, int? shiftId = null)
         {
+            if (shiftId.HasValue)
+            {
+                return await _context.Orders
+                    .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
+                    .Where(o => o.ShiftId == shiftId.Value)
+                    .ToListAsync();
+            }
+            // Fallback: time-range cho các ca cũ chưa có ShiftId
             return await _context.Orders
                 .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
-                .Where(o => o.UserId == userId
-                         && o.OrderDate >= openTime
+                .Where(o => o.OrderDate >= openTime
                          && o.OrderDate <= closeTime)
                 .ToListAsync();
         }

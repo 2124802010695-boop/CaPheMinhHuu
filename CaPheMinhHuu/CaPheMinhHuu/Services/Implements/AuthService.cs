@@ -4,29 +4,28 @@ using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models; // Đảm bảo có dòng này
 
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+
 
 namespace CaPheMinhHuu.Services.Implements
 {
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IConfiguration _configuration;
+
         private readonly IRefreshTokenRepository _refreshTokenRepo;
         private readonly ILoginHistoryRepository _loginHistoryRepo;
         private readonly ILogger<AuthService> _logger;
+        private readonly IJwtService _jwtService;
+        private readonly IShiftRepository _shiftRepository;
 
-        public AuthService(IUserRepository userRepository, IConfiguration configuration, IRefreshTokenRepository refreshTokenRepo, ILoginHistoryRepository loginHistoryRepo, ILogger<AuthService> logger)
+        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepo, ILoginHistoryRepository loginHistoryRepo, ILogger<AuthService> logger, IJwtService jwtService, IShiftRepository shiftRepository)
         {
             _userRepository = userRepository;
             _refreshTokenRepo = refreshTokenRepo;
             _loginHistoryRepo = loginHistoryRepo;
-            _configuration = configuration;
-            
             _logger = logger;
+            _jwtService = jwtService;
+            _shiftRepository = shiftRepository;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -41,7 +40,7 @@ namespace CaPheMinhHuu.Services.Implements
             if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash)) return null;
 
             // 4. Tạo token
-            var token = GenerateJwtToken(user);
+            var token = _jwtService.GenerateAccessToken(user);
             var ipAddress = ""; // Sẽ được truyền từ Controller sau
             var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
             await _refreshTokenRepo.AddAsync(refreshToken);
@@ -62,32 +61,7 @@ namespace CaPheMinhHuu.Services.Implements
             };
         }
 
-        private string GenerateJwtToken(User user)
-        {
-            var jwtSettings = _configuration.GetSection("Jwt");
-            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim("id", user.Id.ToString()),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(4),
-                Issuer = jwtSettings["Issuer"],
-                Audience = jwtSettings["Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
-        }
 
         public async Task<LoginResponse?> AdminLoginAsync(AdminLoginRequest request)
         {
@@ -135,7 +109,7 @@ namespace CaPheMinhHuu.Services.Implements
             _logger.LogInformation("Admin login OK: {Username}", user.Username);
 
             // 7. Tạo JWT Token
-            var token = GenerateJwtToken(user);
+            var token = _jwtService.GenerateAccessToken(user);
             var ipAddress = ""; // Sẽ được truyền từ Controller sau
             var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
             await _refreshTokenRepo.AddAsync(refreshToken);
@@ -190,8 +164,15 @@ namespace CaPheMinhHuu.Services.Implements
             user.LastLoginAt = DateTime.Now;
             await _userRepository.SaveChangesAsync();
             _logger.LogInformation("Staff login OK: {StaffCode}, Role: {Role}", request.StaffCode, user.Role);
-            // 7. Tạo JWT Token
-            var token = GenerateJwtToken(user);
+            // 7. Tạo JWT Token — gắn ShiftId nếu có ca đang mở
+            int? currentShiftId = null;
+            if (user.Role == "Cashier" || user.Role == "Kitchen")
+            {
+                var openShift = await _shiftRepository.GetOpenShiftByUserAsync(user.Id);
+                if (openShift != null)
+                    currentShiftId = openShift.Id;
+            }
+            var token = _jwtService.GenerateAccessToken(user, currentShiftId);
             var ipAddress = ""; // Sẽ được truyền từ Controller sau
             var refreshToken = GenerateRefreshToken(user.Id, ipAddress);
             await _refreshTokenRepo.AddAsync(refreshToken);
@@ -271,7 +252,7 @@ private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
             existingToken.ReplacedByToken = newRefreshToken.Token;
             await _refreshTokenRepo.AddAsync(newRefreshToken);
             // 5. Tạo Access Token mới
-            var newAccessToken = GenerateJwtToken(existingToken.User);
+            var newAccessToken = _jwtService.GenerateAccessToken(existingToken.User);
             await _refreshTokenRepo.SaveChangesAsync();
             // 6. Trả response
             return new LoginResponse

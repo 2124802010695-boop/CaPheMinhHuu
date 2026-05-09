@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace CaPheMinhHuu.Models
 {
@@ -16,9 +16,8 @@ namespace CaPheMinhHuu.Models
         public string? Email { get; set; }
         [StringLength(15)]
         public string? Phone { get; set; }
-        [Required]
         [StringLength(255)]
-        public string PasswordHash { get; set; } = null!;
+        public string? PasswordHash { get; set; }
         [Required]
         [StringLength(100)]
         public string FullName { get; set; } = null!;
@@ -38,6 +37,8 @@ namespace CaPheMinhHuu.Models
         public bool IsActive { get; set; } = true;
         public bool IsFirstLogin { get; set; } = true;  // Bắt buộc đổi mật khẩu (Staff)
         public bool IsEmailVerified { get; set; } = false;
+        public int LoyaltyPoints { get; set; } = 0;
+        public DateTime? DateOfBirth { get; set; }
         public bool IsPhoneVerified { get; set; } = false;
         // ===== SECURITY =====
         public int FailedLoginAttempts { get; set; } = 0;

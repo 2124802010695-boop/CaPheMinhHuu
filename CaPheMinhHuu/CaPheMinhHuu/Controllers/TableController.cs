@@ -29,7 +29,16 @@ namespace CaPheMinhHuu.Controllers
         {
             var table = await _tableService.GetByIdAsync(id);
             if (table == null) return NotFound();
-            return Ok(table);
+            var dto = new TableResponseDto
+            {
+                Id     = table.Id,
+                Number = table.Number,
+                AreaId = table.AreaId,
+                Seats  = table.Seats,
+                Status = table.Status,
+                QRCode = table.QRCode
+            };
+            return Ok(dto);
         }
         // GET: api/table/5/qr
         [HttpGet("{id}/qr")]
@@ -39,7 +48,7 @@ namespace CaPheMinhHuu.Controllers
             var table = await _tableService.GetByIdAsync(id);
             if (table == null) return NotFound();
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            var qrUrl = $"{baseUrl}/menu?table={id}";
+            var qrUrl = $"{baseUrl}/menu?tableId={id}";
             return Ok(new
             {
                 tableId = id,
@@ -54,7 +63,16 @@ namespace CaPheMinhHuu.Controllers
         public async Task<IActionResult> Create([FromBody] CreateTableDto dto)
         {
             var table = await _tableService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = table.Id }, table);
+            var responseDto = new TableResponseDto
+            {
+                Id     = table.Id,
+                Number = table.Number,
+                AreaId = table.AreaId,
+                Seats  = table.Seats,
+                Status = table.Status,
+                QRCode = table.QRCode
+            };
+            return CreatedAtAction(nameof(GetById), new { id = table.Id }, responseDto);
         }
         // PUT: api/table/5
         [HttpPut("{id}")]

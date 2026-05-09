@@ -74,9 +74,8 @@ export default function ShiftClose() {
 
     if (!currentShift) return null;
 
-    // Giả lập dự kiến hệ thống (Tổng thu tiền mặt + Tiền đầu ca)
-    // Shift model backend có OpeningCash, TotalRevenue ...
-    const expectedCash = (currentShift.openingCash || 0) + (currentShift.totalRevenue || 0); // Tạm tính theo TotalRevenue nếu backend chưa chia method
+    // Tính dự kiến hệ thống = Tiền đầu ca + Tiền mặt thu được
+    const expectedCash = (currentShift.openingCash || 0) + (currentShift.cashRevenue || 0);
     const inputCash = parseFloat(closingCashRaw.replace(/\./g, '')) || 0;
     const diff = inputCash - expectedCash;
 

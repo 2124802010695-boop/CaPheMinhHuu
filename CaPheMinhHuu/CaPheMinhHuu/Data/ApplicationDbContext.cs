@@ -179,6 +179,10 @@ namespace CaPheMinhHuu.Data
             {
                 entity.Property(e => e.PriceAtOrder).HasColumnType("decimal(18, 2)");
             });
+            modelBuilder.Entity<Product>()
+                .HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<Category>()
+                .HasQueryFilter(c => !c.IsDeleted);
             modelBuilder.Entity<Order>()
             .HasQueryFilter(o => !o.IsDeleted);
             modelBuilder.Entity<User>()
@@ -222,12 +226,35 @@ namespace CaPheMinhHuu.Data
                       .HasForeignKey(r => r.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // --- ActiveSession ---
+            modelBuilder.Entity<ActiveSession>(entity =>
+            {
+                entity.HasIndex(a => a.TabId);
+                entity.HasIndex(a => new { a.UserId, a.IsActive });
+                entity.HasOne(a => a.User)
+                      .WithMany()
+                      .HasForeignKey(a => a.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+            modelBuilder.Entity<ActiveSession>()
+                .HasQueryFilter(a => !a.User.IsDeleted);
+
+            // --- Order.ShiftId ---
+            modelBuilder.Entity<Order>(entity =>
+            {
+                entity.HasOne(o => o.Shift)
+                      .WithMany()
+                      .HasForeignKey(o => o.ShiftId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
         }
         public DbSet<HolidayConfig> HolidayConfigs { get; set; }
         public DbSet<RequestTicket> RequestTickets { get; set; }  
         public DbSet<LoginHistory> LoginHistory { get; set; }
         public DbSet<Shift> Shifts { get; set; }
         public DbSet<Table> Tables { get; set; }
+        public DbSet<ActiveSession> ActiveSessions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
     }

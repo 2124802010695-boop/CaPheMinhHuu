@@ -10,6 +10,7 @@ namespace CaPheMinhHuu.DTOs.Product
         public int PreparationTime { get; set; }
         public string CategoryName { get; set; } = string.Empty; // Tên danh mục (thay vì ID)
         public int? CategoryId { get; set; }   // ID danh mục — dùng cho filter POS
+        public string? Description { get; set; }
         public bool IsActive { get; set; }     // Còn bán hay hết — dùng cho badge "Hết hàng"
     }
 }

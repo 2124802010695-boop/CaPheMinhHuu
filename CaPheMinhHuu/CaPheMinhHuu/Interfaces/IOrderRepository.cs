@@ -11,5 +11,6 @@ namespace CaPheMinhHuu.Interfaces
         Task<List<Order>> GetByDateAsync(DateTime date);
         Task UpdateStatusAsync(int id, string status);
         Task<IDbContextTransaction> BeginTransactionAsync();
+        Task<Order?> GetByOrderCodeAsync(string orderCode);
     }
 }

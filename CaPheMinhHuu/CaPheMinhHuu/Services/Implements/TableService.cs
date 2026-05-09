@@ -34,7 +34,11 @@ namespace CaPheMinhHuu.Services.Implements
                 Status = "Empty",
                 AreaId = dto.AreaId
             };
-            return await _tableRepository.CreateAsync(table);
+            var created = await _tableRepository.CreateAsync(table);
+            // Set QRCode sau khi có Id (Id chỉ tồn tại sau SaveChanges)
+            created.QRCode = $"/menu?tableId={created.Id}";
+            await _tableRepository.UpdateAsync(created);
+            return created;
         }
 
         public async Task UpdateAsync(int id, UpdateTableDto dto)
@@ -44,7 +48,7 @@ namespace CaPheMinhHuu.Services.Implements
 
             table.Number = dto.Number;
             table.Seats = dto.Seats;
-            table.Status = dto.Status;
+            if (dto.Status != null) table.Status = dto.Status;
             table.AreaId = dto.AreaId;
 
             await _tableRepository.UpdateAsync(table);

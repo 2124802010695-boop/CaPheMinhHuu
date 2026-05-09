@@ -7,10 +7,12 @@ namespace CaPheMinhHuu.Services.Implements
     public class AreaService : IAreaService
     {
         private readonly IAreaRepository _areaRepository;
+        private readonly ITableRepository _tableRepository;
 
-        public AreaService(IAreaRepository areaRepository)
+        public AreaService(IAreaRepository areaRepository, ITableRepository tableRepository)
         {
             _areaRepository = areaRepository;
+            _tableRepository = tableRepository;
         }
 
         private static AreaResponseDto MapToDto(Area area) => new AreaResponseDto
@@ -63,6 +65,13 @@ namespace CaPheMinhHuu.Services.Implements
 
         public async Task DeleteAsync(int id)
         {
+            // Null-out AreaId của tất cả bàn thuộc khu vực này trước khi soft-delete
+            var tables = await _tableRepository.GetAllWithAreaAsync();
+            foreach (var table in tables.Where(t => t.AreaId == id))
+            {
+                table.AreaId = null;
+                await _tableRepository.UpdateAsync(table);
+            }
             await _areaRepository.DeleteAsync(id);
         }
     }

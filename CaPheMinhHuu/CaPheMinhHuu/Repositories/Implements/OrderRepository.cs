@@ -57,5 +57,12 @@ namespace CaPheMinhHuu.Repositories.Implements
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<Order?> GetByOrderCodeAsync(string orderCode)
+            => await _context.Orders
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.Table)
+                .FirstOrDefaultAsync(o => o.OrderCode == orderCode && !o.IsDeleted);
     }
 }

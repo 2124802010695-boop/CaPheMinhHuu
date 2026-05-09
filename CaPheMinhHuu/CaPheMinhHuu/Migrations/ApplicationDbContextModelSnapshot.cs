@@ -22,6 +22,60 @@ namespace CaPheMinhHuu.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.ActiveSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastSeen")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LoginAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LogoutAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LogoutReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TabId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TabId");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("ActiveSessions");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.Area", b =>
                 {
                     b.Property<int>("Id")
@@ -275,7 +329,6 @@ namespace CaPheMinhHuu.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("LogoutTime")
-                        .HasMaxLength(50)
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Portal")
@@ -341,6 +394,9 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<string>("Phone")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -360,6 +416,8 @@ namespace CaPheMinhHuu.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OrderDate");
+
+                    b.HasIndex("ShiftId");
 
                     b.HasIndex("Status");
 
@@ -790,6 +848,9 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("OpenTime")
                         .HasColumnType("datetime2");
 
@@ -886,6 +947,9 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -927,8 +991,10 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("LoyaltyPoints")
+                        .HasColumnType("int");
+
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -1130,6 +1196,17 @@ namespace CaPheMinhHuu.Migrations
                     b.ToTable("InventoryBatches");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.ActiveSession", b =>
+                {
+                    b.HasOne("CaPheMinhHuu.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.HolidayConfig", b =>
                 {
                     b.HasOne("CaPheMinhHuu.Models.User", "Creator")
@@ -1154,14 +1231,21 @@ namespace CaPheMinhHuu.Migrations
 
             modelBuilder.Entity("CaPheMinhHuu.Models.Order", b =>
                 {
-                    b.HasOne("CaPheMinhHuu.Models.Table", "Table")
+                    b.HasOne("CaPheMinhHuu.Models.Shift", "Shift")
                         .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CaPheMinhHuu.Models.Table", "Table")
+                        .WithMany("Orders")
                         .HasForeignKey("TableId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("CaPheMinhHuu.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("Shift");
 
                     b.Navigation("Table");
 
@@ -1351,6 +1435,11 @@ namespace CaPheMinhHuu.Migrations
             modelBuilder.Entity("CaPheMinhHuu.Models.Product", b =>
                 {
                     b.Navigation("Recipes");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.Table", b =>
+                {
+                    b.Navigation("Orders");
                 });
 
             modelBuilder.Entity("Ingredient", b =>

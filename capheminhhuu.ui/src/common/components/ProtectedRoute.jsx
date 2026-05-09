@@ -1,33 +1,77 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import axios from 'axios';
+import { registerTabAPI } from '../services/authService';
+import tabManager from '../utils/tabManager';
 
-/**
- * ProtectedRoute — Bảo vệ route theo role
- * @param {string[]} allowedRoles - Danh sách role được phép truy cập (VD: ["Cashier", "Kitchen"])
- * @param {string} authKey - Key lưu token trong localStorage ("staffToken" hoặc "adminToken")
- * @param {string} userKey - Key lưu user info ("staffUser" hoặc "adminUser")
- * @param {string} loginPath - Redirect về trang login nếu chưa đăng nhập
- */
-const ProtectedRoute = ({ children, allowedRoles = [], authKey = "staffToken", userKey = "staffUser", loginPath = "/staff/login" }) => {
-    const token = localStorage.getItem(authKey);
-    const userRaw = localStorage.getItem(userKey);
+const ProtectedRoute = ({
+    children,
+    allowedRoles = [],
+    authKey = "staffToken",
+    userKey = "staffUser",
+    loginPath = "/login"
+}) => {
+    const [status, setStatus] = useState('checking'); // checking | ok | fail
 
-    // 1. Chưa đăng nhập → redirect về login
-    if (!token || !userRaw) {
-        return <Navigate to={loginPath} replace />;
+
+    useEffect(() => {
+        let isMounted = true; // Memory leak prevention
+
+        const verify = async () => {
+            const token = localStorage.getItem(authKey);
+            const userRaw = localStorage.getItem(userKey);
+
+            if (!token || !userRaw) {
+                if (isMounted) setStatus('fail');
+                return;
+            }
+
+            // Kiểm tra role trước khi gọi API
+            try {
+                const user = JSON.parse(userRaw);
+                if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+                    if (isMounted) setStatus('fail');
+                    return;
+                }
+            } catch {
+                if (isMounted) setStatus('fail');
+                return;
+            }
+
+            // Verify token với backend — dùng axios raw để tránh interceptor gắn nhầm token
+            try {
+                const tabId = tabManager.getTabId();
+                await axios.get('https://localhost:7280/api/Auth/check-token', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'X-Tab-Id': tabId
+                    }
+                });
+                // Token valid → register tab (auto-restore session)
+                await registerTabAPI(tabId);
+                if (isMounted) setStatus('ok');
+            } catch (err) {
+                // Chỉ xóa token nếu thực sự unauthorized (401)
+                // Không xóa nếu rớt mạng hoặc server lỗi (500, network error)
+                if (err.response?.status === 401) {
+                    localStorage.removeItem(authKey);
+                    localStorage.removeItem(userKey);
+                }
+                if (isMounted) setStatus('fail');
+            }
+        };
+
+        verify();
+
+        return () => { isMounted = false; }; // Cleanup khi unmount
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    if (status === 'checking') {
+        return null; // hoặc loading spinner
     }
 
-    // 2. Kiểm tra role (nếu có yêu cầu)
-    if (allowedRoles.length > 0) {
-        try {
-            const user = JSON.parse(userRaw);
-            if (!allowedRoles.includes(user.role)) {
-                // Sai role → redirect về trang chủ
-                return <Navigate to="/" replace />;
-            }
-        } catch {
-            return <Navigate to={loginPath} replace />;
-        }
+    if (status === 'fail') {
+        return <Navigate to={loginPath} replace />;
     }
 
     return children;

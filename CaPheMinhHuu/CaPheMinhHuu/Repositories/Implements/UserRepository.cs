@@ -46,6 +46,13 @@ namespace CaPheMinhHuu.Repositories.Implements
             => await _context.Users
                 .Where(u => u.Role == "Cashier" || u.Role == "Kitchen")
                 .ToListAsync();
-        
+
+        public async Task<User?> GetByEmailAsync(string email)
+            => await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted);
+
+        public async Task<User?> GetByGoogleIdAsync(string googleId)
+            => await _context.Users
+                .FirstOrDefaultAsync(u => u.GoogleId == googleId && !u.IsDeleted);
     }
 }

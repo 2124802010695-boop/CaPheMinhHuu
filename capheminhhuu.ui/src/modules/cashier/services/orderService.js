@@ -9,3 +9,9 @@ export const updateOrderStatus = (id, status) =>
     axios.patch(`/Order/${id}/status`, JSON.stringify(status), {
         headers: { 'Content-Type': 'application/json' }
     });
+
+export const getOrderByCode = (orderCode) =>
+    axios.get(`/Order/code/${orderCode}`);
+
+export const createVnPayUrl = (orderCode) =>
+    axios.post('/payment/vnpay/create-url', { orderCode });

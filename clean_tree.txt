@@ -1,0 +1,454 @@
+D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
++---.github
+|   \---workflows
++---CaPheMinhHuu
+|   +---.config
+|   |   \---dotnet-tools.json
+|   +---CaPheMinhHuu
+|   |   +---ApplicationDbContext.dgml
+|   |   +---CaPheMinhHuu.csproj
+|   |   +---CaPheMinhHuu.csproj.user
+|   |   +---CaPheMinhHuu.http
+|   |   +---Controllers
+|   |   |   +---AreaController.cs
+|   |   |   +---AuthController.cs
+|   |   |   +---CategoryController.cs
+|   |   |   +---CustomerController.cs
+|   |   |   +---DashboardController.cs
+|   |   |   +---GuestOrderController.cs
+|   |   |   +---IngredientCategoryController.cs
+|   |   |   +---IngredientController.cs
+|   |   |   +---MenuController.cs
+|   |   |   +---OrderController.cs
+|   |   |   +---PaymentController.cs
+|   |   |   +---ProductController.cs
+|   |   |   +---RecipeController.cs
+|   |   |   +---ShiftController.cs
+|   |   |   +---StaffController.cs
+|   |   |   \---TableController.cs
+|   |   +---DTOs
+|   |   |   +---Area
+|   |   |   |   +---AreaCreateDto.cs
+|   |   |   |   +---AreaResponseDto.cs
+|   |   |   |   \---AreaUpdateDto.cs
+|   |   |   +---Auth
+|   |   |   |   +---AdminLoginRequest.cs
+|   |   |   |   +---ChangePasswordRequest.cs
+|   |   |   |   +---CreateStaffRequest.cs
+|   |   |   |   +---LoginRequest.cs
+|   |   |   |   +---LoginResponse.cs
+|   |   |   |   +---PasswordValidationAttribute.cs
+|   |   |   |   +---RefreshTokenRequest.cs
+|   |   |   |   +---RegisterTabRequest.cs
+|   |   |   |   \---StaffLoginRequest.cs
+|   |   |   +---Category
+|   |   |   |   +---CategoryCreateDto.cs
+|   |   |   |   +---CategoryDto.cs
+|   |   |   |   \---CategoryUpdateDto.cs
+|   |   |   +---Customer
+|   |   |   |   +---CustomerAuthResponseDto.cs
+|   |   |   |   +---CustomerProfileDto.cs
+|   |   |   |   +---CustomerSendOtpDto.cs
+|   |   |   |   +---CustomerVerifyOtpDto.cs
+|   |   |   |   \---GoogleLoginDto.cs
+|   |   |   +---Dashboard
+|   |   |   |   \---DashboardStatsDto.cs
+|   |   |   +---Email
+|   |   |   |   +---OrderEmailDto.cs
+|   |   |   |   \---OrderItemInfo.cs
+|   |   |   +---Ingredient
+|   |   |   |   +---BatchDto.cs
+|   |   |   |   +---IngredientCreateDto.cs
+|   |   |   |   +---IngredientUpdateDto.cs
+|   |   |   |   +---IngredientViewDto.cs
+|   |   |   |   \---StockCheckResult.cs
+|   |   |   +---IngredientCategory
+|   |   |   |   +---IngredientCategoryCreateDto.cs
+|   |   |   |   +---IngredientCategoryUpdateDto.cs
+|   |   |   |   \---IngredientCategoryViewDto.cs
+|   |   |   +---Order
+|   |   |   |   +---GuestOrderCreateDto.cs
+|   |   |   |   +---OrderCreateDto.cs
+|   |   |   |   +---OrderItemDto.cs
+|   |   |   |   +---OrderItemViewDto.cs
+|   |   |   |   \---OrderViewDto.cs
+|   |   |   +---Payment
+|   |   |   |   +---CreatePaymentDto.cs
+|   |   |   |   \---PaymentResultDto.cs
+|   |   |   +---Product
+|   |   |   |   +---ProductCreateDto.cs
+|   |   |   |   +---ProductUpdateDto.cs
+|   |   |   |   \---ProductViewDto.cs
+|   |   |   +---Recipe
+|   |   |   |   +---RecipeCreateDto.cs
+|   |   |   |   \---RecipeViewDto.cs
+|   |   |   +---Shift
+|   |   |   |   +---ShiftCloseDto.cs
+|   |   |   |   +---ShiftOpenDto.cs
+|   |   |   |   +---ShiftRejectDto.cs
+|   |   |   |   +---ShiftViewDto.cs
+|   |   |   |   \---ZReportDto.cs
+|   |   |   +---Staff
+|   |   |   |   \---UpdateStaffRequest.cs
+|   |   |   \---Table
+|   |   |       +---CreateTableDto.cs
+|   |   |       +---TableResponseDto.cs
+|   |   |       \---UpdateTableDto.cs
+|   |   +---Data
+|   |   |   \---ApplicationDbContext.cs
+|   |   +---Hubs
+|   |   |   +---AppHub.cs
+|   |   |   +---KitchenHub.cs
+|   |   |   \---ShiftHub.cs
+|   |   +---Interfaces
+|   |   |   +---IActiveSessionRepository.cs
+|   |   |   +---IAreaRepository.cs
+|   |   |   +---IAreaService.cs
+|   |   |   +---IAuditLogRepository.cs
+|   |   |   +---IAuthService.cs
+|   |   |   +---ICategoryRepository.cs
+|   |   |   +---ICategoryService.cs
+|   |   |   +---ICustomerService.cs
+|   |   |   +---IDashboardRepository.cs
+|   |   |   +---IDashboardService.cs
+|   |   |   +---IEmailService.cs
+|   |   |   +---IGoogleAuthService.cs
+|   |   |   +---IIngredientCategoryRepository.cs
+|   |   |   +---IIngredientCategoryService.cs
+|   |   |   +---IIngredientRepository.cs
+|   |   |   +---IIngredientService.cs
+|   |   |   +---IIngredientUnitRepository.cs
+|   |   |   +---IInventoryBatchRepository.cs
+|   |   |   +---IJwtService.cs
+|   |   |   +---ILoginHistoryRepository.cs
+|   |   |   +---IOrderRepository.cs
+|   |   |   +---IOrderService.cs
+|   |   |   +---IOtpRepository.cs
+|   |   |   +---IOtpService.cs
+|   |   |   +---IPaymentService.cs
+|   |   |   +---IProductRepository.cs
+|   |   |   +---IProductService.cs
+|   |   |   +---IRecipeRepository.cs
+|   |   |   +---IRecipeService.cs
+|   |   |   +---IRefreshTokenRepository.cs
+|   |   |   +---IRepository.cs
+|   |   |   +---IShiftRepository.cs
+|   |   |   +---IShiftService.cs
+|   |   |   +---IStaffService.cs
+|   |   |   +---ITableRepository.cs
+|   |   |   +---ITableService.cs
+|   |   |   \---IUserRepository.cs
+|   |   +---Middleware
+|   |   |   \---GlobalExceptionMiddleware.cs
+|   |   +---Middlewares
+|   |   |   \---ActiveSessionMiddleware.cs
+|   |   +---Migrations
+|   |   |   +---20251118081156_InitialCreate.Designer.cs
+|   |   |   +---20251118081156_InitialCreate.cs
+|   |   |   +---20251118083233_AddUserDatHang.Designer.cs
+|   |   |   +---20251118083233_AddUserDatHang.cs
+|   |   |   +---20251119061812_AddCategoryAndProductDetails.Designer.cs
+|   |   |   +---20251119061812_AddCategoryAndProductDetails.cs
+|   |   |   +---20251124070256_AddBOMTables.Designer.cs
+|   |   |   +---20251124070256_AddBOMTables.cs
+|   |   |   +---20251124075811_AddAuditFields.Designer.cs
+|   |   |   +---20251124075811_AddAuditFields.cs
+|   |   |   +---20251124081114_ConfigBOMAndAudit.Designer.cs
+|   |   |   +---20251124081114_ConfigBOMAndAudit.cs
+|   |   |   +---20251125064420_AddIngredientGroup.Designer.cs
+|   |   |   +---20251125064420_AddIngredientGroup.cs
+|   |   |   +---20251128032642_UpdateLogicKho.Designer.cs
+|   |   |   +---20251128032642_UpdateLogicKho.cs
+|   |   |   +---20251128081850_AddDateToIngredient.Designer.cs
+|   |   |   +---20251128081850_AddDateToIngredient.cs
+|   |   |   +---20251203031057_AddPackagingInfo.Designer.cs
+|   |   |   +---20251203031057_AddPackagingInfo.cs
+|   |   |   +---20251210014412_AddIngredientUnitsAndInventoryBatches.Designer.cs
+|   |   |   +---20251210014412_AddIngredientUnitsAndInventoryBatches.cs
+|   |   |   +---20251226072735_UpdateUserModelFor3Portals.Designer.cs
+|   |   |   +---20251226072735_UpdateUserModelFor3Portals.cs
+|   |   |   +---20260108043828_RefactorOrderToInheritBaseEntity.Designer.cs
+|   |   |   +---20260108043828_RefactorOrderToInheritBaseEntity.cs
+|   |   |   +---20260108044825_RefactorUserToInheritBaseEntity.Designer.cs
+|   |   |   +---20260108044825_RefactorUserToInheritBaseEntity.cs
+|   |   |   +---20260108045206_AddGlobalQueryFilterForOrderAndUser.Designer.cs
+|   |   |   +---20260108045206_AddGlobalQueryFilterForOrderAndUser.cs
+|   |   |   +---20260108061543_AddShiftAndTableModels.Designer.cs
+|   |   |   +---20260108061543_AddShiftAndTableModels.cs
+|   |   |   +---20260108074623_AddAreaToTable.Designer.cs
+|   |   |   +---20260108074623_AddAreaToTable.cs
+|   |   |   +---20260131150643_AddOrderTables.Designer.cs
+|   |   |   +---20260131150643_AddOrderTables.cs
+|   |   |   +---20260306040933_AddRefreshToken.Designer.cs
+|   |   |   +---20260306040933_AddRefreshToken.cs
+|   |   |   +---20260306064136_AddBatchRowVersion.Designer.cs
+|   |   |   +---20260306064136_AddBatchRowVersion.cs
+|   |   |   +---20260318083931_AddAuditLogsTable.Designer.cs
+|   |   |   +---20260318083931_AddAuditLogsTable.cs
+|   |   |   +---20260430095327_OrderFieldsNullable.Designer.cs
+|   |   |   +---20260430095327_OrderFieldsNullable.cs
+|   |   |   +---20260430102711_FixQueryFilters.Designer.cs
+|   |   |   +---20260430102711_FixQueryFilters.cs
+|   |   |   +---20260503074946_AddCreatedByToBatch.Designer.cs
+|   |   |   +---20260503074946_AddCreatedByToBatch.cs
+|   |   |   +---20260503075502_FixQueryFilterWarnings.Designer.cs
+|   |   |   +---20260503075502_FixQueryFilterWarnings.cs
+|   |   |   +---20260503081836_AddCreatedByToBatch1.Designer.cs
+|   |   |   +---20260503081836_AddCreatedByToBatch1.cs
+|   |   |   +---20260503090322_CustomerModule.Designer.cs
+|   |   |   +---20260503090322_CustomerModule.cs
+|   |   |   +---20260503091239_FixDecimalPrecision.Designer.cs
+|   |   |   +---20260503091239_FixDecimalPrecision.cs
+|   |   |   +---20260504073547_AddTableIdToOrder.Designer.cs
+|   |   |   +---20260504073547_AddTableIdToOrder.cs
+|   |   |   +---20260504124714_Phase1_OrderItemNote_AreaFields_TableAreaNav.Designer.cs
+|   |   |   +---20260504124714_Phase1_OrderItemNote_AreaFields_TableAreaNav.cs
+|   |   |   +---20260504145426_PosCoreFix.Designer.cs
+|   |   |   +---20260504145426_PosCoreFix.cs
+|   |   |   +---20260505021844_RemoveTableNumberAndAreaString.Designer.cs
+|   |   |   +---20260505021844_RemoveTableNumberAndAreaString.cs
+|   |   |   +---20260505130348_AddLoyaltyPointsAndDOB.Designer.cs
+|   |   |   +---20260505130348_AddLoyaltyPointsAndDOB.cs
+|   |   |   +---20260508093506_AddActiveSessionsShiftLock.Designer.cs
+|   |   |   +---20260508093506_AddActiveSessionsShiftLock.cs
+|   |   |   +---20260508123950_RemoveTabIdUniqueIndex.Designer.cs
+|   |   |   +---20260508123950_RemoveTabIdUniqueIndex.cs
+|   |   |   \---ApplicationDbContextModelSnapshot.cs
+|   |   +---Models
+|   |   |   +---ActiveSession.cs
+|   |   |   +---Area.cs
+|   |   |   +---AuditLog.cs
+|   |   |   +---BaseEntity.cs
+|   |   |   +---Category.cs
+|   |   |   +---Coupon.cs
+|   |   |   +---HolidayConfig.cs
+|   |   |   +---Ingredient.cs
+|   |   |   +---IngredientCategory.cs
+|   |   |   +---IngredientUnit.cs
+|   |   |   +---InventoryBatch.cs
+|   |   |   +---LoginHistory.cs
+|   |   |   +---Order.cs
+|   |   |   +---OrderItem.cs
+|   |   |   +---OtpCode.cs
+|   |   |   +---Payment.cs
+|   |   |   +---Product.cs
+|   |   |   +---Recipe.cs
+|   |   |   +---RefreshToken.cs
+|   |   |   +---RequestTicket.cs
+|   |   |   +---Reservation.cs
+|   |   |   +---Shift.cs
+|   |   |   +---Table.cs
+|   |   |   \---User.cs
+|   |   +---Program.cs
+|   |   +---Properties
+|   |   |   \---launchSettings.json
+|   |   +---Repositories
+|   |   |   \---Implements
+|   |   |       +---ActiveSessionRepository.cs
+|   |   |       +---AreaRepository.cs
+|   |   |       +---AuditLogRepository.cs
+|   |   |       +---CategoryRepository.cs
+|   |   |       +---DashboardRepository.cs
+|   |   |       +---IngredientCategoryRepository.cs
+|   |   |       +---IngredientRepository.cs
+|   |   |       +---IngredientUnitRepository.cs
+|   |   |       +---InventoryBatchRepository.cs
+|   |   |       +---LoginHistoryRepository.cs
+|   |   |       +---OrderRepository.cs
+|   |   |       +---OtpRepository.cs
+|   |   |       +---ProductRepository.cs
+|   |   |       +---RecipeRepository.cs
+|   |   |       +---RefreshTokenRepository.cs
+|   |   |       +---ShiftRepository.cs
+|   |   |       +---TableRepository.cs
+|   |   |       \---UserRepository.cs
+|   |   +---Services
+|   |   |   \---Implements
+|   |   |       +---AreaService.cs
+|   |   |       +---AuditLogActionFilter.cs
+|   |   |       +---AuthService.cs
+|   |   |       +---CategoryService.cs
+|   |   |       +---CustomerService.cs
+|   |   |       +---DashboardService.cs
+|   |   |       +---EmailService.cs
+|   |   |       +---GoogleAuthService.cs
+|   |   |       +---IngredientCategoryService.cs
+|   |   |       +---IngredientService.cs
+|   |   |       +---JwtService.cs
+|   |   |       +---OrderService.cs
+|   |   |       +---OtpService.cs
+|   |   |       +---ProductService.cs
+|   |   |       +---RecipeService.cs
+|   |   |       +---ShiftService.cs
+|   |   |       +---StaffService.cs
+|   |   |       +---TableService.cs
+|   |   |       \---VnPayService.cs
+|   |   +---appsettings.Development.json
+|   |   +---appsettings.json
+|   |   \---wwwroot
+|   |       \---images
+|   |           \---products
+|   |               +---03f18d66-c907-4348-ae02-b63658ed5db9.jpg
+|   |               +---17167719-1baa-43a3-b408-9a6e1acbbd24.png
+|   |               +---3546bbe1-6314-4a8e-ae79-14176720e33f.jpg
+|   |               +---3d435802-0aa7-4305-b5b0-5fef464cbe3e.jpg
+|   |               +---4595696e-bcbd-46de-be95-bd20e5d9d1c6.png
+|   |               +---49ba4909-89e5-4956-9dfd-ed4c6bf20a1f.jpg
+|   |               +---4ea74165-52aa-44e6-b471-65be9802686f.jpg
+|   |               +---62545a86-59e8-4f4e-9670-552fac53d529.jpeg
+|   |               +---8378d747-e3e5-4d4d-aa5c-0e0df07e758d.png
+|   |               +---8711c2f7-1950-46cf-a3c6-a93f46fa6164.jpg
+|   |               +---8746b0db-e0b7-4f6c-afb1-7493b7d47ab3.png
+|   |               +---8d53bacc-4cac-426c-a443-44335ab96bf2.png
+|   |               +---8fa01b9f-dfbf-4825-9841-58166e5f7a1a.jpg
+|   |               +---952767a9-d48c-459f-97c9-97a96b12a9b6.jpg
+|   |               +---963ac381-d44d-4e82-9f6b-323c89c39034.jpg
+|   |               +---a12f4322-e206-48d8-9655-3090b860ade5.png
+|   |               +---b58c9d1f-cc16-498e-9879-68cd7a7b72e9.jpg
+|   |               +---b6a583d6-3ba6-4b2b-83d7-d986dda8ceec.jpg
+|   |               +---c6cb2344-da9a-4a64-82e8-010bfc279783.jpg
+|   |               +---cd3f0723-06ce-4abf-a249-5de8a589d08c.jpg
+|   |               +---e35a50dc-0a82-44ee-8ff3-85bfa4039604.jpg
+|   |               \---fe153ce8-10bc-42bc-9477-40a219a04890.jpg
+|   \---CaPheMinhHuu.sln
++---capheminhhuu.ui
+|   +---.gitignore
+|   +---eslint.config.js
+|   +---index.html
+|   +---out
+|   +---package-lock.json
+|   +---package.json
+|   +---postcss.config.js
+|   +---public
+|   |   \---vite.svg
+|   +---src
+|   |   +---App.jsx
+|   |   +---assets
+|   |   |   \---react.svg
+|   |   +---common
+|   |   |   +---components
+|   |   |   |   \---ProtectedRoute.jsx
+|   |   |   +---context
+|   |   |   |   \---ThemeContext.jsx
+|   |   |   +---services
+|   |   |   |   \---authService.js
+|   |   |   \---utils
+|   |   |       +---axiosCustomize.js
+|   |   |       +---signalRConnection.js
+|   |   |       \---tabManager.js
+|   |   +---index.css
+|   |   +---main.jsx
+|   |   \---modules
+|   |       +---admin
+|   |       |   +---components
+|   |       |   |   +---ModalAddBatch.jsx
+|   |       |   |   +---ModalAddCategory.jsx
+|   |       |   |   +---ModalAddIngredient.jsx
+|   |       |   |   +---ModalAddIngredientCategory.jsx
+|   |       |   |   +---ModalAddProduct.jsx
+|   |       |   |   +---ModalEditIngredient.jsx
+|   |       |   |   +---ModalIngredientDetail.jsx
+|   |       |   |   +---ModalRecipe.jsx
+|   |       |   |   +---Navbar.jsx
+|   |       |   |   \---Sidebar.jsx
+|   |       |   +---layout
+|   |       |   |   \---LayoutAdmin.jsx
+|   |       |   +---pages
+|   |       |   |   +---AdminDashboard.jsx
+|   |       |   |   +---QuanLyCaLamViec.jsx
+|   |       |   |   +---QuanLyDanhMuc.jsx
+|   |       |   |   +---QuanLyDanhMucNguyenLieu.jsx
+|   |       |   |   +---QuanLyKho.jsx
+|   |       |   |   +---QuanLyKhuVucBan.jsx
+|   |       |   |   +---QuanLyNhanVien.jsx
+|   |       |   |   +---QuanLySanPham.jsx
+|   |       |   |   \---SecurityDashboard.jsx
+|   |       |   \---services
+|   |       |       +---adminTableService.js
+|   |       |       +---areaService.js
+|   |       |       +---batchService.js
+|   |       |       +---categoryService.js
+|   |       |       +---dashboardService.js
+|   |       |       +---ingredientCategoryService.js
+|   |       |       +---ingredientService.js
+|   |       |       +---productService.js
+|   |       |       +---recipeService.js
+|   |       |       \---staffService.js
+|   |       +---auth
+|   |       |   +---AdminLogin.jsx
+|   |       |   +---ChangePassword.jsx
+|   |       |   +---PortalSelection.jsx
+|   |       |   +---StaffLogin.jsx
+|   |       |   \---UnifiedLogin.jsx
+|   |       +---cashier
+|   |       |   +---components
+|   |       |   |   +---CartPanel.jsx
+|   |       |   |   +---CategoryTabs.jsx
+|   |       |   |   +---PaymentPanel.jsx
+|   |       |   |   \---ProductGrid.jsx
+|   |       |   +---layout
+|   |       |   |   \---LayoutCashier.jsx
+|   |       |   +---pages
+|   |       |   |   +---CashierPOS.jsx
+|   |       |   |   +---OrderDetail.jsx
+|   |       |   |   +---OrderList.jsx
+|   |       |   |   +---ShiftClose.jsx
+|   |       |   |   +---ShiftOpen.jsx
+|   |       |   |   +---ShiftReport.jsx
+|   |       |   |   \---TableManagement.jsx
+|   |       |   \---services
+|   |       |       +---orderService.js
+|   |       |       +---shiftService.js
+|   |       |       \---tableService.js
+|   |       \---kitchen
+|   |           \---pages
+|   |               \---KDS_Bep.jsx
+|   +---tailwind.config.js
+|   \---vite.config.js
+\---capheminhhuu-customer
+    +---.env
+    +---.gitignore
+    +---eslint.config.js
+    +---index.html
+    +---package-lock.json
+    +---package.json
+    +---public
+    |   +---favicon.svg
+    |   \---icons.svg
+    +---src
+    |   +---App.css
+    |   +---App.jsx
+    |   +---assets
+    |   |   +---hero.png
+    |   |   +---react.svg
+    |   |   \---vite.svg
+    |   +---common
+    |   |   +---services
+    |   |   |   \---.gitkeep
+    |   |   \---utils
+    |   |       +---axiosCustomize.js
+    |   |       \---signalRConnection.js
+    |   +---index.css
+    |   +---main.jsx
+    |   \---modules
+    |       \---customer
+    |           +---components
+    |           |   \---.gitkeep
+    |           +---layout
+    |           |   +---.gitkeep
+    |           |   \---LayoutCustomer.jsx
+    |           +---pages
+    |           |   +---.gitkeep
+    |           |   +---Cart.jsx
+    |           |   +---ConfirmOrder.jsx
+    |           |   +---CustomerLogin.jsx
+    |           |   +---Menu.jsx
+    |           |   +---OrderTracking.jsx
+    |           |   +---PaymentCallback.jsx
+    |           |   \---Profile.jsx
+    |           \---services
+    |               +---.gitkeep
+    |               +---customerAuthService.js
+    |               +---menuService.js
+    |               \---orderService.js
+    \---vite.config.js

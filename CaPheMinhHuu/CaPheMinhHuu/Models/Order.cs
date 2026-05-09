@@ -18,5 +18,8 @@ namespace CaPheMinhHuu.Models
         public string? Email { get; set; }
         public string OrderCode { get; set; } = "";
         public Payment? Payment { get; set; }
+
+        public int? ShiftId { get; set; }
+        public Shift? Shift { get; set; }
     }
 }

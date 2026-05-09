@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './common/components/ProtectedRoute';
 
-import PortalSelection from './modules/auth/PortalSelection';
+import UnifiedLogin from './modules/auth/UnifiedLogin';
 import AdminLogin from './modules/auth/AdminLogin';
 import StaffLogin from './modules/auth/StaffLogin';
 import ChangePassword from './modules/auth/ChangePassword';
@@ -35,14 +35,14 @@ function App() {
         <BrowserRouter>
             <Toaster position="top-right" />
             <Routes>
-                <Route path="/" element={<PortalSelection />} />
-                <Route path="/login" element={<PortalSelection />} />
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/staff/login" element={<StaffLogin />} />
+                <Route path="/" element={<UnifiedLogin />} />
+                <Route path="/login" element={<UnifiedLogin />} />
+                <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+                <Route path="/staff/login" element={<Navigate to="/login" replace />} />
                 <Route path="/staff/change-password" element={<ChangePassword />} />
 
                 <Route path="admin" element={
-                    <ProtectedRoute allowedRoles={["Admin"]} authKey="adminToken" userKey="adminUser" loginPath="/admin/login">
+                    <ProtectedRoute allowedRoles={["Admin"]} authKey="adminToken" userKey="adminUser" loginPath="/login">
                         <LayoutAdmin />
                     </ProtectedRoute>
                 }>
@@ -59,7 +59,7 @@ function App() {
                 </Route>
 
                 <Route path="cashier" element={
-                    <ProtectedRoute allowedRoles={["Cashier"]} authKey="staffToken" userKey="staffUser" loginPath="/staff/login">
+                    <ProtectedRoute allowedRoles={["Cashier"]} authKey="staffToken" userKey="staffUser" loginPath="/login">
                         <LayoutCashier />
                     </ProtectedRoute>
                 }>
@@ -74,7 +74,7 @@ function App() {
                 </Route>
 
                 <Route path="/Bep" element={
-                    <ProtectedRoute allowedRoles={["Kitchen"]} authKey="staffToken" userKey="staffUser" loginPath="/staff/login">
+                    <ProtectedRoute allowedRoles={["Kitchen"]} authKey="staffToken" userKey="staffUser" loginPath="/login">
                         <KDS_Bep />
                     </ProtectedRoute>
                 } />

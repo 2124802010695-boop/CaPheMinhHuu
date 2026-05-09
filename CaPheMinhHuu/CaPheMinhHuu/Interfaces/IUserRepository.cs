@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Models;
 
 namespace CaPheMinhHuu.Interfaces
@@ -15,7 +15,7 @@ namespace CaPheMinhHuu.Interfaces
         Task SaveChangesAsync();
         Task<User> AddAsync(User user);
         Task<List<User>> GetStaffListAsync();
-        
-
+        Task<User?> GetByEmailAsync(string email);
+        Task<User?> GetByGoogleIdAsync(string googleId);
     }
 }

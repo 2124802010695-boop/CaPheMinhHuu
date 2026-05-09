@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace CaPheMinhHuu.Models
 {
@@ -13,7 +13,6 @@ namespace CaPheMinhHuu.Models
         [StringLength(20)]
         public string Portal { get; set; } = null!;  // Admin, Staff, Customer
         public DateTime LoginTime { get; set; } = DateTime.Now;
-        [StringLength(50)]
         public DateTime? LogoutTime { get; set; }
         [StringLength(50)]
         public string? IpAddress { get; set; }

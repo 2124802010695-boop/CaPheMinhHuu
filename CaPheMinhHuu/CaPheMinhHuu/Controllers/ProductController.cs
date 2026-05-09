@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Product;
+using CaPheMinhHuu.DTOs.Product;
 using CaPheMinhHuu.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,12 +17,21 @@ namespace CaPheMinhHuu.Controllers
             _productService = productService;
         }
 
-        // GET: api/Product — Staff + Admin đều xem được menu
+        // GET: api/Product — Public (customer + POS)
         [HttpGet]
-        [AllowAnonymous] // Cho phép xem menu không cần login (khách hàng cũng xem được)
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
-            var products = await _productService.GetAllProductsAsync();
+            var products = await _productService.GetAllProductsAsync(includeDeleted: false);
+            return Ok(products);
+        }
+
+        // GET: api/Product/admin/all — Admin xem tất cả kể cả đã xóa
+        [HttpGet("admin/all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllAdmin()
+        {
+            var products = await _productService.GetAllProductsAsync(includeDeleted: true);
             return Ok(products);
         }
 

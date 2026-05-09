@@ -31,9 +31,11 @@ namespace CaPheMinhHuu.Services.Implements
             return $"{request.Scheme}://{request.Host}{relativePath}";
         }
 
-        public async Task<IEnumerable<ProductViewDto>> GetAllProductsAsync()
+        public async Task<IEnumerable<ProductViewDto>> GetAllProductsAsync(bool includeDeleted = false)
         {
-            var products = await _repo.GetAllAsync();
+            var products = includeDeleted
+                ? await _repo.GetAllIncludingDeletedAsync()
+                : await _repo.GetAllAsync();
             return products.Select(p => new ProductViewDto
             {
                 Id = p.Id,
@@ -44,6 +46,7 @@ namespace CaPheMinhHuu.Services.Implements
                 PreparationTime = p.PreparationTime,
                 CategoryName = p.Category?.Name ?? "Chưa phân loại",
                 CategoryId = p.CategoryId,
+                Description = p.Description,
                 IsActive = p.IsActive
             });
         }

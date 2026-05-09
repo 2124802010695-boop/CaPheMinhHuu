@@ -1,7 +1,7 @@
 import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { createOrder } from '../services/orderService';
 
-const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated }, ref) {
+const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaymentRequired }, ref) {
     const [cart, setCart] = useState([]);
     const [selectedTable, setSelectedTable] = useState(null);
     const [customerName, setCustomerName] = useState('Khách lẻ');
@@ -84,13 +84,15 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated }, ref)
                     note: item.note || null
                 }))
             };
-            await createOrder(dto);
+            const order = await createOrder(dto);
             onOrderCreated();
             showToast('Tạo đơn thành công!', 'success');
-            clearCart();
-            setCustomerName('Khách lẻ');
-            setCustomerPhone('');
-            setSelectedTable(null);
+            onPaymentRequired(order, paymentMethod, () => {
+                clearCart();
+                setCustomerName('Khách lẻ');
+                setCustomerPhone('');
+                setSelectedTable(null);
+            });
         } catch (err) {
             console.error('Lỗi tạo đơn:', err);
             showToast(
@@ -224,6 +226,7 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated }, ref)
                             <option value="Cash">Tiền mặt</option>
                             <option value="Transfer">CK</option>
                             <option value="Card">Thẻ</option>
+                            <option value="VNPay">VNPAY</option>
                         </select>
                     </div>
                 </div>

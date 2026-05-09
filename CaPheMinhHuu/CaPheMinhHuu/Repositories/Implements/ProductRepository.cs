@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +27,8 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             var p = await _context.Products.FindAsync(id);
             if (p == null) return false;
-            _context.Products.Remove(p);
+            p.IsDeleted = true;
+            _context.Products.Update(p);
             await _context.SaveChangesAsync();
             return true;
         }
@@ -40,5 +41,13 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Products.FindAsync(id);
         }
+
+        public async Task<IEnumerable<Product>> GetAllIncludingDeletedAsync()
+            => await _context.Products
+                .IgnoreQueryFilters()
+                .Include(p => p.Category)
+                .OrderBy(p => p.IsDeleted)
+                .ThenBy(p => p.Name)
+                .ToListAsync();
     }
 }

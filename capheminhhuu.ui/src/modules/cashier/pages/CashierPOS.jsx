@@ -4,6 +4,7 @@ import { getCategoriesAPI } from '../../admin/services/categoryService';
 import { getTablesAPI } from '../services/tableService';
 import { onConnectionReady, onOrderStatusUpdated } from '../../../common/utils/signalRConnection';
 import CartPanel from '../components/CartPanel';
+import PaymentPanel from '../components/PaymentPanel';
 import toast from 'react-hot-toast';
 
 const getCategoryIcon = (name) => {
@@ -27,6 +28,7 @@ export default function CashierPOS() {
     const [activeCategory, setActiveCategory] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
+    const [pendingPayment, setPendingPayment] = useState(null);
     const cartRef = useRef(null);
 
     useEffect(() => {
@@ -193,8 +195,31 @@ export default function CashierPOS() {
                 </section>
 
                 {/* Cart Panel */}
-                <CartPanel ref={cartRef} tables={tables} onOrderCreated={fetchTables} />
+                <CartPanel 
+                    ref={cartRef} 
+                    tables={tables} 
+                    onOrderCreated={fetchTables} 
+                    onPaymentRequired={(order, paymentMethod, clearCart) => 
+                        setPendingPayment({ order, paymentMethod, clearCart })
+                    }
+                />
             </div>
+            
+            {/* Payment Modal */}
+            {pendingPayment && (
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+                    <PaymentPanel
+                        order={pendingPayment.order}
+                        paymentMethod={pendingPayment.paymentMethod}
+                        onClose={() => setPendingPayment(null)}
+                        onConfirmed={() => {
+                            pendingPayment.clearCart();
+                            setPendingPayment(null);
+                            fetchTables();
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }

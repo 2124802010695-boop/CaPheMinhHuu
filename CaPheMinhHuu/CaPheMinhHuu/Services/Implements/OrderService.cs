@@ -34,7 +34,7 @@ namespace CaPheMinhHuu.Services.Implements
             _tableRepository = tableRepository;
             _logger = logger;
         }
-        public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId)
+        public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId, int? shiftId = null)
         {
             var stockCheck = await _ingredientService.CheckStockForOrderAsync(dto.Items);
             if (!stockCheck.IsAvailable)
@@ -51,6 +51,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Address = dto.Address ?? "",
                 PaymentMethod = dto.PaymentMethod,
                 TableId = dto.TableId,
+                ShiftId = shiftId,
                 OrderDate = DateTime.Now,
                 Status = "Pending",
                 OrderCode = $"MH-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}"
@@ -139,6 +140,29 @@ namespace CaPheMinhHuu.Services.Implements
                 }).ToList() ?? new List<OrderItemViewDto>()
             }).ToList();
         }
+        private static OrderViewDto MapToViewDto(Order order) => new()
+        {
+            Id            = order.Id,
+            CustomerName  = order.CustomerName,
+            Phone         = order.Phone,
+            TotalAmount   = order.TotalAmount,
+            Status        = order.Status,
+            OrderDate     = order.OrderDate,
+            PaymentMethod = order.PaymentMethod,
+            TableId       = order.TableId,
+            TableName     = order.Table?.Number.ToString(),
+            OrderCode     = order.OrderCode,
+            Items         = order.OrderItems?.Select(oi => new OrderItemViewDto
+            {
+                ProductId    = oi.ProductId,
+                ProductName  = oi.Product?.Name ?? "N/A",
+                Quantity     = oi.Quantity,
+                PriceAtOrder = oi.PriceAtOrder,
+                Subtotal     = oi.PriceAtOrder * oi.Quantity,
+                Note         = oi.Note
+            }).ToList() ?? new List<OrderItemViewDto>()
+        };
+
         private static readonly Dictionary<string, string[]> _allowedTransitions = new()
         {
             ["Pending"] = new[] { "Preparing", "Cancelled", "Completed" },
@@ -186,6 +210,80 @@ namespace CaPheMinhHuu.Services.Implements
             }
             _logger.LogInformation("Đơn hàng #{OrderId} chuyển trạng thái → {Status}", id, newStatus);
             await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", id, newStatus);
+        }
+
+        public async Task<OrderViewDto> CreateGuestOrderAsync(GuestOrderCreateDto dto)
+        {
+            // Convert GuestOrderItemDto → OrderItemDto để reuse stock check
+            var itemDtos = dto.Items.Select(i => new OrderItemDto
+            {
+                ProductId = i.ProductId,
+                Quantity  = i.Quantity,
+                Note      = i.Note
+            }).ToList();
+
+            var stockCheck = await _ingredientService.CheckStockForOrderAsync(itemDtos);
+            if (!stockCheck.IsAvailable)
+            {
+                var info = string.Join(", ", stockCheck.Shortages.Select(
+                    s => $"{s.IngredientName}: cần {s.Required}, còn {s.Available}"));
+                throw new InvalidOperationException($"Không đủ nguyên liệu: {info}");
+            }
+
+            var order = new Order
+            {
+                UserId        = null,
+                CustomerName  = dto.Email ?? "Khách",
+                Phone         = null,
+                Address       = "",
+                PaymentMethod = "Cash",
+                TableId       = dto.TableId,
+                OrderDate     = DateTime.Now,
+                Status        = "Pending",
+                OrderCode     = $"MH-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}"
+            };
+
+            decimal totalAmount = 0;
+            var orderItems = new List<OrderItem>();
+            foreach (var item in itemDtos)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null)
+                    throw new InvalidOperationException($"Sản phẩm ID {item.ProductId} không tồn tại");
+                orderItems.Add(new OrderItem
+                {
+                    ProductId    = item.ProductId,
+                    Quantity     = item.Quantity,
+                    PriceAtOrder = product.Price,
+                    Note         = item.Note
+                });
+                totalAmount += product.Price * item.Quantity;
+            }
+
+            order.OrderItems  = orderItems;
+            order.TotalAmount = totalAmount;
+
+            var createdOrder = await _orderRepository.CreateAsync(order);
+
+            if (dto.TableId.HasValue)
+                await _tableRepository.UpdateStatusAsync(dto.TableId.Value, "Occupied");
+
+            await _ingredientService.DeductStockForOrderAsync(itemDtos);
+
+            var orderViewDto = await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
+
+            _logger.LogInformation("Guest order #{OrderId} created — {ItemCount} items, total {Total:N0}đ",
+                orderViewDto.Id, orderViewDto.Items?.Count ?? 0, orderViewDto.TotalAmount);
+
+            await _hubContext.Clients.Group("Operations").SendAsync("ReceiveNewOrder", orderViewDto);
+
+            return orderViewDto;
+        }
+
+        public async Task<OrderViewDto?> GetByOrderCodeAsync(string orderCode)
+        {
+            var order = await _orderRepository.GetByOrderCodeAsync(orderCode);
+            return order == null ? null : MapToViewDto(order);
         }
     }
 }
