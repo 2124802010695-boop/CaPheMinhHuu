@@ -7,5 +7,6 @@ namespace CaPheMinhHuu.Interfaces
         string GenerateAccessToken(User user);
         string GenerateAccessToken(User user, int? shiftId = null);
         RefreshToken GenerateRefreshToken(int userId, string? ipAddress = null);
+        string GenerateGuestToken(string email);
     }
 }

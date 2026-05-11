@@ -16,6 +16,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---CustomerController.cs
 |   |   |   +---DashboardController.cs
 |   |   |   +---GuestOrderController.cs
+|   |   |   +---HolidayController.cs
 |   |   |   +---IngredientCategoryController.cs
 |   |   |   +---IngredientController.cs
 |   |   |   +---MenuController.cs
@@ -24,6 +25,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---ProductController.cs
 |   |   |   +---ProductSizeController.cs
 |   |   |   +---RecipeController.cs
+|   |   |   +---SalaryController.cs
 |   |   |   +---ShiftController.cs
 |   |   |   +---StaffController.cs
 |   |   |   +---TableController.cs
@@ -90,6 +92,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   |   +---RecipeVersionDto.cs
 |   |   |   |   \---RecipeViewDto.cs
 |   |   |   +---Shift
+|   |   |   |   +---SalaryDto.cs
 |   |   |   |   +---ShiftCloseDto.cs
 |   |   |   |   +---ShiftOpenDto.cs
 |   |   |   |   +---ShiftRejectDto.cs
@@ -142,6 +145,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---IRecipeService.cs
 |   |   |   +---IRefreshTokenRepository.cs
 |   |   |   +---IRepository.cs
+|   |   |   +---ISalaryService.cs
 |   |   |   +---IShiftRepository.cs
 |   |   |   +---IShiftService.cs
 |   |   |   +---IStaffService.cs
@@ -240,6 +244,8 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---20260510140847_AddRecipeVersioning.cs
 |   |   |   +---20260511072721_AddPurchaseUnitToBatch.Designer.cs
 |   |   |   +---20260511072721_AddPurchaseUnitToBatch.cs
+|   |   |   +---20260511131338_AddHourlyRateAndShiftType.Designer.cs
+|   |   |   +---20260511131338_AddHourlyRateAndShiftType.cs
 |   |   |   \---ApplicationDbContextModelSnapshot.cs
 |   |   +---Models
 |   |   |   +---ActiveSession.cs
@@ -315,6 +321,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |       +---ProductService.cs
 |   |   |       +---ProductSizeService.cs
 |   |   |       +---RecipeService.cs
+|   |   |       +---SalaryService.cs
 |   |   |       +---ShiftService.cs
 |   |   |       +---StaffService.cs
 |   |   |       +---TableService.cs
@@ -401,6 +408,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |   |   +---QuanLyDanhMucNguyenLieu.jsx
 |   |       |   |   +---QuanLyKho.jsx
 |   |       |   |   +---QuanLyKhuVucBan.jsx
+|   |       |   |   +---QuanLyLuong.jsx
 |   |       |   |   +---QuanLyNhanVien.jsx
 |   |       |   |   +---QuanLySanPham.jsx
 |   |       |   |   +---QuanLyTopping.jsx
@@ -411,11 +419,13 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |       +---batchService.js
 |   |       |       +---categoryService.js
 |   |       |       +---dashboardService.js
+|   |       |       +---holidayService.js
 |   |       |       +---ingredientCategoryService.js
 |   |       |       +---ingredientService.js
 |   |       |       +---productService.js
 |   |       |       +---productSizeService.js
 |   |       |       +---recipeService.js
+|   |       |       +---salaryService.js
 |   |       |       +---staffService.js
 |   |       |       \---toppingService.js
 |   |       +---auth

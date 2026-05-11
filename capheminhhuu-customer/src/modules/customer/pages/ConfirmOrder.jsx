@@ -14,29 +14,39 @@ const ConfirmOrder = () => {
     const navigate  = useNavigate();
     const location  = useLocation();
     const cart      = location.state?.cart || [];
-    const tableId   = location.state?.tableId;
+    const tableId   = location.state?.tableId || sessionStorage.getItem('tableId');
     const guestEmail = location.state?.guestEmail;
     const [loading, setLoading] = useState(false);
 
     const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+
+    const [voucherCode, setVoucherCode] = useState(
+        localStorage.getItem('pendingVoucher') || ''
+    );
 
     const handleSubmit = async () => {
         if (cart.length === 0) { toast.error('Giỏ hàng trống'); return; }
         setLoading(true);
         try {
             const dto = {
-                tableId:  tableId ? Number(tableId) : null,
-                email:    guestEmail || null,
-                items:    cart.map(i => ({
-                    productId: i.id,
-                    quantity:  i.quantity,
-                    note:      i.note || null
+                tableId:     tableId ? Number(tableId) : null,
+                email:       guestEmail || null,
+                couponCode:  voucherCode.trim() || null,
+                items:       cart.map(i => ({
+                    productId:  i.id,
+                    quantity:   i.quantity,
+                    note:       i.note || null,
+                    sizeLabel:  i.sizeLabel || null,
+                    sugarLevel: i.sugarLevel || null,
+                    iceLevel:   i.iceLevel || null,
+                    toppings:   i.toppings || []
                 }))
             };
             const order = await createGuestOrderAPI(dto);
             localStorage.removeItem('cart');
+            localStorage.removeItem('pendingVoucher');
             toast.success('Đặt món thành công! 🎉');
-            navigate(`/tracking/${order.orderCode}`);
+            navigate(`/tracking/${order.orderCode}`, { state: { total } });
         } catch (err) {
             const msg = err?.response?.data?.message || 'Đặt món thất bại';
             toast.error(msg);

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 namespace CaPheMinhHuu.DTOs.Staff
 {
     public class UpdateStaffRequest
@@ -15,5 +15,6 @@ namespace CaPheMinhHuu.DTOs.Staff
         public string Role { get; set; } = null!;  // Cashier hoặc Kitchen
         public decimal Salary { get; set; }
         public decimal SalaryCoefficient { get; set; } = 1.0m;
+        public decimal? HourlyRate { get; set; } // Lương theo giờ — dùng để tính bảng lương
     }
 }

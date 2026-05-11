@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Shift;
+using CaPheMinhHuu.DTOs.Shift;
 namespace CaPheMinhHuu.Interfaces
 {
     public interface IShiftService
@@ -12,6 +12,8 @@ namespace CaPheMinhHuu.Interfaces
         Task<ShiftViewDto> ApproveShiftAsync(int shiftId, int adminId);
         Task<ShiftViewDto> RejectShiftAsync(int shiftId, int adminId, string? reason);
         Task<ShiftViewDto> AdminForceCloseShiftAsync(int shiftId, int adminId);
+        // ===================== KITCHEN =====================
+        Task<ShiftViewDto> KitchenCloseShiftAsync(int shiftId, int kitchenId);
         Task<List<ShiftViewDto>> GetPendingShiftsAsync();
         Task<List<ShiftViewDto>> GetAllShiftsAsync(string? status = null);
         Task<ZReportDto> AdminGetZReportAsync(int shiftId);

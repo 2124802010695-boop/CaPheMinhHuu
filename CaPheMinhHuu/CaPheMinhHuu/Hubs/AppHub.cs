@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace CaPheMinhHuu.Hubs
@@ -45,6 +45,12 @@ namespace CaPheMinhHuu.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
 
             await base.OnConnectedAsync();
+        }
+
+        public async Task SendOrderStatusToCustomer(string orderCode, string status)
+        {
+            await Clients.Group($"Order_{orderCode}")
+                .SendAsync("OrderStatusUpdated", orderCode, status);
         }
     }
 }

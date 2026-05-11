@@ -19,7 +19,7 @@ import {
 
 const INITIAL_FORM = {
     username: '', password: '', fullName: '', phone: '',
-    email: '', role: 'Cashier', salary: 0, salaryCoefficient: 1.0
+    email: '', role: 'Cashier', salary: 0, salaryCoefficient: 1.0, hourlyRate: 0
 };
 
 const QuanLyNhanVien = () => {
@@ -64,7 +64,8 @@ const QuanLyNhanVien = () => {
             email: staff.email || '',
             role: staff.role || 'Cashier',
             salary: staff.salary || 0,
-            salaryCoefficient: staff.salaryCoefficient || 1.0
+            salaryCoefficient: staff.salaryCoefficient || 1.0,
+            hourlyRate: staff.hourlyRate || 0
         });
         setOpenModal(true);
     };
@@ -89,7 +90,8 @@ const QuanLyNhanVien = () => {
                     email: form.email || null,
                     role: form.role,
                     salary: parseFloat(form.salary) || 0,
-                    salaryCoefficient: parseFloat(form.salaryCoefficient) || 1.0
+                    salaryCoefficient: parseFloat(form.salaryCoefficient) || 1.0,
+                    hourlyRate: parseFloat(form.hourlyRate) || 0
                 });
                 alert('Cập nhật nhân viên thành công!');
             } else {
@@ -101,7 +103,8 @@ const QuanLyNhanVien = () => {
                     email: form.email || null,
                     role: form.role,
                     salary: parseFloat(form.salary) || 0,
-                    salaryCoefficient: parseFloat(form.salaryCoefficient) || 1.0
+                    salaryCoefficient: parseFloat(form.salaryCoefficient) || 1.0,
+                    hourlyRate: parseFloat(form.hourlyRate) || 0
                 });
                 alert('Tạo nhân viên thành công!');
             }
@@ -331,18 +334,25 @@ const QuanLyNhanVien = () => {
                         </TextField>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                             <TextField
-                                label="Lương" fullWidth size="small" type="number"
+                                label="Lương cơ bản" fullWidth size="small" type="number"
                                 value={form.salary}
                                 onChange={(e) => setForm({ ...form, salary: e.target.value })}
                                 InputProps={{ endAdornment: <InputAdornment position="end">đ</InputAdornment> }}
                             />
                             <TextField
-                                label="Hệ số lương" size="small" type="number" sx={{ width: 160 }}
+                                label="Hệ số" size="small" type="number" sx={{ width: 120 }}
                                 value={form.salaryCoefficient}
                                 onChange={(e) => setForm({ ...form, salaryCoefficient: e.target.value })}
                                 inputProps={{ step: 0.1, min: 0.1 }}
                             />
                         </Box>
+                        <TextField
+                            label="Lương theo giờ" fullWidth size="small" type="number"
+                            value={form.hourlyRate}
+                            onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
+                            helperText="Dùng để tính bảng lương theo ca làm việc"
+                            InputProps={{ endAdornment: <InputAdornment position="end">đ/giờ</InputAdornment> }}
+                        />
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>

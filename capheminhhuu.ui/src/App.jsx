@@ -16,6 +16,7 @@ import QuanLyKho from './modules/admin/pages/QuanLyKho';
 import QuanLyNhanVien from './modules/admin/pages/QuanLyNhanVien';
 import QuanLyKhuVucBan from './modules/admin/pages/QuanLyKhuVucBan';
 import QuanLyCaLamViec from './modules/admin/pages/QuanLyCaLamViec';
+import QuanLyLuong from './modules/admin/pages/QuanLyLuong';
 
 
 import LayoutCashier from './modules/cashier/layout/LayoutCashier';
@@ -54,6 +55,7 @@ function App() {
                     <Route path="quanlykho" element={<QuanLyKho />} />
                     <Route path="quanlynhanvien" element={<QuanLyNhanVien />} />
                     <Route path="quanlycalamviec" element={<QuanLyCaLamViec />} />
+                    <Route path="quanlyluong" element={<QuanLyLuong />} />
 
                     <Route path="quanlykhuvucban" element={<QuanLyKhuVucBan />} />
                     <Route path="quanlytopping" element={<QuanLyTopping />} />

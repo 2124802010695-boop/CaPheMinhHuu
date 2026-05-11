@@ -82,6 +82,8 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 // Shift
 builder.Services.AddScoped<IShiftRepository, ShiftRepository>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
+// Salary
+builder.Services.AddScoped<ISalaryService, SalaryService>();
 // Dashboard
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
@@ -98,6 +100,7 @@ builder.Services.AddScoped<IOtpRepository, OtpRepository>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
 // Customer
+builder.Services.AddScoped<IUserCouponRepository, UserCouponRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 

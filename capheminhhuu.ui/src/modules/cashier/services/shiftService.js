@@ -46,6 +46,19 @@ export const getAllShiftsAPI = (status) =>
 export const adminGetZReportAPI = (shiftId) =>
     axios.get(`/Shift/admin/z-report/${shiftId}`);
 
+// ===================== KITCHEN =====================
+// POST: api/Shift/kitchen/request-open — Yêu cầu mở ca (Kitchen)
+export const kitchenRequestOpenShift = () =>
+    axios.post('/Shift/kitchen/request-open');
+
+// GET: api/Shift/kitchen/current — Lấy ca hiện tại (Kitchen)
+export const kitchenGetCurrentShift = () =>
+    axios.get('/Shift/kitchen/current');
+
+// POST: api/Shift/kitchen/close/{shiftId} — Đóng ca (Kitchen)
+export const kitchenCloseShift = (shiftId) =>
+    axios.post(`/Shift/kitchen/close/${shiftId}`);
+
 // ===================== ALIASES =====================
 // Cashier pages dùng tên có hậu tố "API" → alias cho tương thích
 export const requestOpenShiftAPI = requestOpenShift;

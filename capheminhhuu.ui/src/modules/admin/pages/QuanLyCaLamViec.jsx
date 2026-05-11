@@ -67,19 +67,15 @@ const QuanLyCaLamViec = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [forceCloseModal, setForceCloseModal] = useState({ open: false, shift: null });
     const [reportModal, setReportModal] = useState({ open: false, data: null, loading: false });
-
-    // Real-time notification
     const [notification, setNotification] = useState({ open: false, message: '' });
     const connectionRef = useRef(null);
-
-    // Tick để refresh overtime display mỗi phút
     const [, setTick] = useState(0);
+
     useEffect(() => {
         const timer = setInterval(() => setTick(t => t + 1), 60000);
         return () => clearInterval(timer);
     }, []);
 
-    // ── SignalR ───────────────────────────────────────────────
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
         if (!token) return;
@@ -104,7 +100,6 @@ const QuanLyCaLamViec = () => {
         return () => { connection.stop(); };
     }, []);
 
-    // ── Data ──────────────────────────────────────────────────
     useEffect(() => { fetchData(); }, [tab]);
 
     const fetchDataRef = useRef(null);
@@ -125,7 +120,6 @@ const QuanLyCaLamViec = () => {
     };
     fetchDataRef.current = fetchData;
 
-    // ── Actions ───────────────────────────────────────────────
     const handleApprove = async (shiftId) => {
         if (!window.confirm('Xác nhận DUYỆT ca này?')) return;
         try {
@@ -184,7 +178,6 @@ const QuanLyCaLamViec = () => {
 
     return (
         <Box sx={{ p: 3, minHeight: '100vh' }}>
-            {/* Header */}
             <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, border: '1px solid #e5e7eb' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -192,55 +185,35 @@ const QuanLyCaLamViec = () => {
                             <AccessTimeIcon sx={{ color: '#d97706', fontSize: 28 }} />
                         </Avatar>
                         <Box>
-                            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                                Quản Lý Ca Làm Việc
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Duyệt yêu cầu mở ca, quản lý ca đang mở, xem lịch sử và Z-Report
-                            </Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Quản Lý Ca Làm Việc</Typography>
+                            <Typography variant="body2" color="text.secondary">Duyệt yêu cầu mở ca, quản lý ca đang mở, xem lịch sử và Z-Report</Typography>
                         </Box>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {/* Real-time indicator */}
-                        <Chip
-                            icon={<NotificationsActiveIcon sx={{ fontSize: 14 }} />}
-                            label="Real-time"
-                            size="small"
-                            sx={{ bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 600, fontSize: 11 }}
-                        />
-                        <Button variant="outlined" startIcon={<RefreshIcon />}
-                            onClick={fetchData} sx={{ textTransform: 'none' }}>
-                            Làm mới
-                        </Button>
+                        <Chip icon={<NotificationsActiveIcon sx={{ fontSize: 14 }} />} label="Real-time" size="small"
+                            sx={{ bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 600, fontSize: 11 }} />
+                        <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchData} sx={{ textTransform: 'none' }}>Làm mới</Button>
                     </Box>
                 </Box>
             </Paper>
 
-            {/* Cảnh báo */}
             {isOutsideBusinessHours() && (
                 <Alert severity="warning" sx={{ mb: 2 }}>
                     ⏰ Ngoài giờ hoạt động ({BUSINESS_OPEN}:00 – {BUSINESS_CLOSE}:00).
-                    {overtimeShifts.length > 0
-                        ? ` Có ${overtimeShifts.length} ca đang mở quá giờ — cần đóng ca!`
-                        : ' Không có ca nào đang mở.'}
+                    {overtimeShifts.length > 0 ? ` Có ${overtimeShifts.length} ca đang mở quá giờ — cần đóng ca!` : ' Không có ca nào đang mở.'}
                 </Alert>
             )}
             {overtimeShifts.length > 0 && !isOutsideBusinessHours() && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    🚨 Có {overtimeShifts.length} ca mở quá 14 tiếng! Cần đóng ca chủ động.
-                </Alert>
+                <Alert severity="error" sx={{ mb: 2 }}>🚨 Có {overtimeShifts.length} ca mở quá 14 tiếng! Cần đóng ca chủ động.</Alert>
             )}
 
-            {/* Tabs */}
             <Paper elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid #e5e7eb' }}>
-                <Tabs value={tab} onChange={(_, v) => setTab(v)}
-                    sx={{ px: 2, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 } }}>
+                <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 } }}>
                     <Tab label={`Chờ duyệt (${pendingShifts.length})`} />
                     <Tab label="Tất cả ca" />
                 </Tabs>
             </Paper>
 
-            {/* Table */}
             <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -252,7 +225,8 @@ const QuanLyCaLamViec = () => {
                             <TableHead sx={{ bgcolor: 'background.default' }}>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 600 }}>Mã ca</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Thu ngân</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Loại ca</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Nhân viên</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Thời gian mở</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Thời gian đóng</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Tiền đầu ca</TableCell>
@@ -264,76 +238,58 @@ const QuanLyCaLamViec = () => {
                             <TableBody>
                                 {currentList.map((shift) => {
                                     const overtime = shift.status === 'Open' && isShiftOvertime(shift.openTime);
-                                    const durationHrs = shift.status === 'Open'
-                                        ? getShiftDurationHours(shift.openTime).toFixed(1) : null;
+                                    const durationHrs = shift.status === 'Open' ? getShiftDurationHours(shift.openTime).toFixed(1) : null;
                                     return (
-                                        <TableRow key={shift.id} sx={{
-                                            '&:hover': { bgcolor: 'action.hover' },
-                                            bgcolor: overtime ? '#fef2f2' : 'inherit',
-                                        }}>
+                                        <TableRow key={shift.id} sx={{ '&:hover': { bgcolor: 'action.hover' }, bgcolor: overtime ? '#fef2f2' : 'inherit' }}>
+                                            <TableCell><Chip label={`#${shift.id}`} size="small" sx={{ bgcolor: 'action.hover', fontWeight: 600 }} /></TableCell>
                                             <TableCell>
-                                                <Chip label={`#${shift.id}`} size="small"
-                                                    sx={{ bgcolor: 'action.hover', fontWeight: 600 }} />
+                                                <Chip
+                                                    label={shift.shiftType === 'Kitchen' ? '👨‍🍳 Bếp' : '💰 Thu ngân'}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: shift.shiftType === 'Kitchen' ? '#fef3c7' : '#dbeafe',
+                                                        color: shift.shiftType === 'Kitchen' ? '#d97706' : '#1d4ed8',
+                                                        fontWeight: 600
+                                                    }}
+                                                />
                                             </TableCell>
                                             <TableCell sx={{ fontWeight: 500 }}>{shift.userName || '—'}</TableCell>
                                             <TableCell sx={{ fontSize: '0.8rem' }}>{formatDateTime(shift.openTime)}</TableCell>
                                             <TableCell sx={{ fontSize: '0.8rem' }}>{formatDateTime(shift.closeTime)}</TableCell>
                                             <TableCell sx={{ fontWeight: 500 }}>{formatVND(shift.openingCash)}</TableCell>
-                                            <TableCell sx={{ fontWeight: 600, color: '#059669' }}>
-                                                {shift.totalRevenue != null ? formatVND(shift.totalRevenue) : '—'}
-                                            </TableCell>
+                                            <TableCell sx={{ fontWeight: 600, color: '#059669' }}>{shift.totalRevenue != null ? formatVND(shift.totalRevenue) : '—'}</TableCell>
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     {getStatusChip(shift.status)}
-                                                    {overtime && (
-                                                        <Chip
-                                                            icon={<WarningAmberIcon sx={{ fontSize: 14 }} />}
-                                                            label={`${durationHrs}h`} size="small"
-                                                            sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: '0.7rem' }}
-                                                        />
-                                                    )}
-                                                    {shift.status === 'Open' && !overtime && durationHrs && (
-                                                        <Chip label={`${durationHrs}h`} size="small" variant="outlined"
-                                                            sx={{ fontWeight: 500, fontSize: '0.7rem' }} />
-                                                    )}
+                                                    {overtime && <Chip icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} label={`${durationHrs}h`} size="small" sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: '0.7rem' }} />}
+                                                    {shift.status === 'Open' && !overtime && durationHrs && <Chip label={`${durationHrs}h`} size="small" variant="outlined" sx={{ fontWeight: 500, fontSize: '0.7rem' }} />}
                                                 </Box>
                                             </TableCell>
                                             <TableCell align="right">
-                                                {/* Duyệt / Từ chối — PendingOpen hoặc PendingApproval */}
                                                 {isPending(shift.status) && (
                                                     <>
                                                         <Tooltip title="Duyệt ca">
-                                                            <IconButton size="small"
-                                                                onClick={() => handleApprove(shift.id)}
-                                                                sx={{ color: '#22c55e' }}>
+                                                            <IconButton size="small" onClick={() => handleApprove(shift.id)} sx={{ color: '#22c55e' }}>
                                                                 <CheckCircleIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
                                                         <Tooltip title="Từ chối">
-                                                            <IconButton size="small"
-                                                                onClick={() => setRejectModal({ open: true, shiftId: shift.id })}
-                                                                sx={{ color: '#ef4444' }}>
+                                                            <IconButton size="small" onClick={() => setRejectModal({ open: true, shiftId: shift.id })} sx={{ color: '#ef4444' }}>
                                                                 <CancelIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
                                                     </>
                                                 )}
-                                                {/* Đóng ca chủ động — chỉ Open */}
                                                 {shift.status === 'Open' && (
                                                     <Tooltip title="Đóng ca chủ động">
-                                                        <IconButton size="small"
-                                                            onClick={() => setForceCloseModal({ open: true, shift })}
-                                                            sx={{ color: overtime ? '#dc2626' : '#d97706' }}>
+                                                        <IconButton size="small" onClick={() => setForceCloseModal({ open: true, shift })} sx={{ color: overtime ? '#dc2626' : '#d97706' }}>
                                                             <StopCircleIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
                                                 )}
-                                                {/* Z-Report — Closed hoặc Approved */}
-                                                {(shift.status === 'Closed' || shift.status === 'Approved') && (
+                                                {(shift.status === 'Closed' || shift.status === 'Approved') && shift.shiftType !== 'Kitchen' && (
                                                     <Tooltip title="Xem Z-Report">
-                                                        <IconButton size="small"
-                                                            onClick={() => handleViewReport(shift.id)}
-                                                            sx={{ color: '#6366f1' }}>
+                                                        <IconButton size="small" onClick={() => handleViewReport(shift.id)} sx={{ color: '#6366f1' }}>
                                                             <VisibilityIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
@@ -344,11 +300,9 @@ const QuanLyCaLamViec = () => {
                                 })}
                                 {currentList.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                                        <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
                                             <AccessTimeIcon sx={{ fontSize: 48, color: '#d1d5db', mb: 1, display: 'block', mx: 'auto' }} />
-                                            <Typography color="text.secondary">
-                                                {tab === 0 ? 'Không có ca nào chờ duyệt' : 'Chưa có ca nào trong hệ thống'}
-                                            </Typography>
+                                            <Typography color="text.secondary">{tab === 0 ? 'Không có ca nào chờ duyệt' : 'Chưa có ca nào trong hệ thống'}</Typography>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -358,9 +312,7 @@ const QuanLyCaLamViec = () => {
                 )}
             </Paper>
 
-            {/* ── REJECT MODAL ── */}
-            <Dialog open={rejectModal.open}
-                onClose={() => setRejectModal({ open: false, shiftId: null })} maxWidth="xs" fullWidth>
+            <Dialog open={rejectModal.open} onClose={() => setRejectModal({ open: false, shiftId: null })} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{ fontWeight: 700 }}>Từ Chối Ca</DialogTitle>
                 <DialogContent>
                     <TextField label="Lý do từ chối" fullWidth multiline rows={3} sx={{ mt: 1 }}
@@ -368,138 +320,63 @@ const QuanLyCaLamViec = () => {
                         placeholder="VD: Tiền đầu ca không khớp, chưa kiểm kê..." />
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setRejectModal({ open: false, shiftId: null })}
-                        sx={{ textTransform: 'none' }}>Hủy</Button>
-                    <Button variant="contained" color="error" onClick={handleReject}
-                        sx={{ textTransform: 'none' }}>Xác nhận từ chối</Button>
+                    <Button onClick={() => setRejectModal({ open: false, shiftId: null })} sx={{ textTransform: 'none' }}>Hủy</Button>
+                    <Button variant="contained" color="error" onClick={handleReject} sx={{ textTransform: 'none' }}>Xác nhận từ chối</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* ── FORCE CLOSE MODAL ── */}
-            <Dialog open={forceCloseModal.open}
-                onClose={() => setForceCloseModal({ open: false, shift: null })} maxWidth="xs" fullWidth>
+            <Dialog open={forceCloseModal.open} onClose={() => setForceCloseModal({ open: false, shift: null })} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{ fontWeight: 700, color: '#dc2626' }}>⚠️ Đóng Ca Chủ Động</DialogTitle>
                 <DialogContent>
                     {forceCloseModal.shift && (
                         <Box sx={{ mt: 1 }}>
                             <Alert severity="warning" sx={{ mb: 2 }}>
-                                Đóng ca <b>#{forceCloseModal.shift.id}</b> của <b>{forceCloseModal.shift.userName}</b>.
-                                Tiền cuối ca = 0đ. Thu ngân cần kiểm kê lại sau.
+                                Đóng ca <b>#{forceCloseModal.shift.id}</b> của <b>{forceCloseModal.shift.userName}</b>. Tiền cuối ca = 0đ.
                             </Alert>
                             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Thu ngân</Typography>
-                                    <Typography fontWeight={600}>{forceCloseModal.shift.userName}</Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Tiền đầu ca</Typography>
-                                    <Typography fontWeight={600}>{formatVND(forceCloseModal.shift.openingCash)}</Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Mở ca lúc</Typography>
-                                    <Typography fontWeight={600}>{formatDateTime(forceCloseModal.shift.openTime)}</Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Thời gian mở</Typography>
-                                    <Typography fontWeight={600} color="error">
-                                        {getShiftDurationHours(forceCloseModal.shift.openTime).toFixed(1)} giờ
-                                    </Typography>
-                                </Box>
+                                <Box><Typography variant="caption" color="text.secondary">Thu ngân</Typography><Typography fontWeight={600}>{forceCloseModal.shift.userName}</Typography></Box>
+                                <Box><Typography variant="caption" color="text.secondary">Tiền đầu ca</Typography><Typography fontWeight={600}>{formatVND(forceCloseModal.shift.openingCash)}</Typography></Box>
+                                <Box><Typography variant="caption" color="text.secondary">Mở ca lúc</Typography><Typography fontWeight={600}>{formatDateTime(forceCloseModal.shift.openTime)}</Typography></Box>
+                                <Box><Typography variant="caption" color="text.secondary">Thời gian mở</Typography><Typography fontWeight={600} color="error">{getShiftDurationHours(forceCloseModal.shift.openTime).toFixed(1)} giờ</Typography></Box>
                             </Box>
                         </Box>
                     )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setForceCloseModal({ open: false, shift: null })}
-                        sx={{ textTransform: 'none' }}>Hủy</Button>
-                    <Button variant="contained" color="error" onClick={handleForceClose}
-                        sx={{ textTransform: 'none' }}>Xác nhận đóng ca</Button>
+                    <Button onClick={() => setForceCloseModal({ open: false, shift: null })} sx={{ textTransform: 'none' }}>Hủy</Button>
+                    <Button variant="contained" color="error" onClick={handleForceClose} sx={{ textTransform: 'none' }}>Xác nhận đóng ca</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* ── Z-REPORT MODAL ── */}
-            <Dialog open={reportModal.open}
-                onClose={() => setReportModal({ open: false, data: null, loading: false })}
-                maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ fontWeight: 700 }}>
-                    Z-Report — Ca #{reportModal.data?.shiftId}
-                </DialogTitle>
+            <Dialog open={reportModal.open} onClose={() => setReportModal({ open: false, data: null, loading: false })} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>Z-Report — Ca #{reportModal.data?.shiftId}</DialogTitle>
                 <DialogContent>
                     {reportModal.loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                            <CircularProgress />
-                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
                     ) : reportModal.data ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
                             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                                <Paper sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
-                                    <Typography variant="caption" color="text.secondary">Thu ngân</Typography>
-                                    <Typography fontWeight={600}>{reportModal.data.cashierName}</Typography>
-                                </Paper>
-                                <Paper sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
-                                    <Typography variant="caption" color="text.secondary">Tổng đơn</Typography>
-                                    <Typography fontWeight={600}>{reportModal.data.totalOrders}</Typography>
-                                </Paper>
-                                <Paper sx={{ p: 2, bgcolor: '#dcfce7', borderRadius: 2 }}>
-                                    <Typography variant="caption" color="text.secondary">Tổng doanh thu</Typography>
-                                    <Typography fontWeight={700} color="#059669">
-                                        {formatVND(reportModal.data.totalRevenue)}
-                                    </Typography>
-                                </Paper>
+                                <Paper sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}><Typography variant="caption" color="text.secondary">Thu ngân</Typography><Typography fontWeight={600}>{reportModal.data.cashierName}</Typography></Paper>
+                                <Paper sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}><Typography variant="caption" color="text.secondary">Tổng đơn</Typography><Typography fontWeight={600}>{reportModal.data.totalOrders}</Typography></Paper>
+                                <Paper sx={{ p: 2, bgcolor: '#dcfce7', borderRadius: 2 }}><Typography variant="caption" color="text.secondary">Tổng doanh thu</Typography><Typography fontWeight={700} color="#059669">{formatVND(reportModal.data.totalRevenue)}</Typography></Paper>
                                 <Paper sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
                                     <Typography variant="caption" color="text.secondary">Chênh lệch</Typography>
-                                    <Typography fontWeight={600} color={
-                                        reportModal.data.difference === 0 ? '#059669'
-                                            : reportModal.data.difference < 0 ? '#dc2626' : '#d97706'
-                                    }>
-                                        {reportModal.data.difference != null
-                                            ? formatVND(reportModal.data.difference)
-                                            : '— (Blind Close)'}
+                                    <Typography fontWeight={600} color={reportModal.data.difference === 0 ? '#059669' : reportModal.data.difference < 0 ? '#dc2626' : '#d97706'}>
+                                        {reportModal.data.difference != null ? formatVND(reportModal.data.difference) : '— (Blind Close)'}
                                     </Typography>
                                 </Paper>
                             </Box>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Tiền đầu ca</Typography>
-                                    <Typography>{formatVND(reportModal.data.openingCash)}</Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Tiền cuối ca</Typography>
-                                    <Typography>{formatVND(reportModal.data.closingCash)}</Typography>
-                                </Box>
-                            </Box>
-                            {reportModal.data.topProducts?.length > 0 && (
-                                <Box>
-                                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                                        Top sản phẩm
-                                    </Typography>
-                                    {reportModal.data.topProducts.slice(0, 5).map((p, i) => (
-                                        <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                                            <Typography variant="body2">{i + 1}. {p.productName}</Typography>
-                                            <Typography variant="body2" fontWeight={600}>
-                                                {p.quantitySold} ly — {formatVND(p.revenue)}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Box>
-                            )}
                         </Box>
                     ) : null}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setReportModal({ open: false, data: null, loading: false })}
-                        sx={{ textTransform: 'none' }}>Đóng</Button>
+                    <Button onClick={() => setReportModal({ open: false, data: null, loading: false })} sx={{ textTransform: 'none' }}>Đóng</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* ── SNACKBAR NOTIFICATION ── */}
-            <Snackbar
-                open={notification.open}
-                autoHideDuration={4000}
+            <Snackbar open={notification.open} autoHideDuration={4000}
                 onClose={() => setNotification({ open: false, message: '' })}
-                message={notification.message}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            />
+                message={notification.message} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} />
         </Box>
     );
 };

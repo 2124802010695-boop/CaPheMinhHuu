@@ -10,6 +10,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import PeopleIcon from '@mui/icons-material/People';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import PaymentsIcon from '@mui/icons-material/Payments';
 
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import IcecreamIcon from '@mui/icons-material/Icecream';
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
     { label: 'Khu Vực & Bàn',        path: '/admin/quanlykhuvucban',         icon: <MeetingRoomIcon sx={{ color: '#10b981' }} /> },
     { label: 'Quản lý Nhân viên',    path: '/admin/quanlynhanvien',          icon: <PeopleIcon sx={{ color: '#9333ea' }} /> },
     { label: 'Quản lý Ca',           path: '/admin/quanlycalamviec',         icon: <AccessTimeIcon sx={{ color: '#d97706' }} /> },
+    { label: 'Bảng Lương',           path: '/admin/quanlyluong',             icon: <PaymentsIcon sx={{ color: '#16a34a' }} /> },
     { label: 'Quản lý Topping',      path: '/admin/quanlytopping',           icon: <IcecreamIcon sx={{ color: '#db2777' }} /> },
 ];
 

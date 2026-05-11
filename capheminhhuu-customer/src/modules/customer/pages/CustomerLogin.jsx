@@ -2,19 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Box, Typography, TextField, Button,
-    Divider, CircularProgress, Paper
+    Divider, CircularProgress, Paper, useTheme,
+    Tabs, Tab, Fade
 } from '@mui/material';
 import { GoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { sendOtpAPI, verifyOtpAPI, googleLoginAPI } from '../services/customerAuthService';
 
-const COLORS = {
-    primary: '#3D1A0A',
-    accent:  '#C8860A',
-    surface: '#FDF6F0',
-};
-
 const CustomerLogin = () => {
+    const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo = location.state?.returnTo || '/menu';
@@ -51,6 +47,8 @@ const CustomerLogin = () => {
         try {
             const res = await verifyOtpAPI(email, otp, wantRegister);
             if (res.isGuest) {
+                localStorage.setItem('guestToken', res.token);
+                localStorage.setItem('guestEmail', email);
                 toast.success('Xác thực thành công!');
                 navigate(returnTo, { state: { tableId, guestEmail: email } });
                 return;
@@ -80,132 +78,192 @@ const CustomerLogin = () => {
         }
     };
 
+    const handleSkipLogin = () => {
+        toast.info('Vui lòng đăng nhập để đặt món (Chế độ xem thử)', { icon: '☕' });
+        navigate('/menu', { replace: true, state: { tableId } });
+    };
+
     return (
         <Box sx={{
-            minHeight: '100vh', bgcolor: COLORS.surface,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', p: 3
+            minHeight: '100vh',
+            background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 2,
+            position: 'relative',
+            overflow: 'hidden'
         }}>
-            {/* Logo */}
-            <Typography variant="h4" sx={{
-                fontFamily: '"Playfair Display", serif',
-                color: COLORS.primary, fontWeight: 800, mb: 1
-            }}>
-                Cà Phê Minh Hữu
-            </Typography>
-            <Typography sx={{ color: COLORS.accent, mb: 4, fontWeight: 500 }}>
-                ☕ Đăng nhập để đặt món
-            </Typography>
+            {/* Background Decorative Elements */}
+            <Box sx={{
+                position: 'absolute', top: -100, right: -100,
+                width: 300, height: 300, borderRadius: '50%',
+                background: 'rgba(200, 134, 10, 0.05)', filter: 'blur(80px)'
+            }} />
+            <Box sx={{
+                position: 'absolute', bottom: -50, left: -50,
+                width: 200, height: 200, borderRadius: '50%',
+                background: 'rgba(200, 134, 10, 0.03)', filter: 'blur(60px)'
+            }} />
 
-            <Paper elevation={0} sx={{
-                width: '100%', maxWidth: 400, p: 3,
-                borderRadius: 4, border: '1px solid #f0e6dc'
-            }}>
-                {step === 'email' ? (
-                    <>
-                        <Typography sx={{ fontWeight: 700, color: COLORS.primary, mb: 2 }}>
-                            Nhập email của bạn
-                        </Typography>
-                        <TextField
-                            fullWidth size="small" type="email"
-                            placeholder="example@gmail.com"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                            sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                        />
-                        <Button fullWidth variant="contained" onClick={handleSendOtp}
-                            disabled={loading}
-                            startIcon={loading && <CircularProgress size={16} color="inherit" />}
-                            sx={{
-                                bgcolor: COLORS.primary, py: 1.2, borderRadius: 2,
-                                textTransform: 'none', fontWeight: 700,
-                                '&:hover': { bgcolor: COLORS.accent }
-                            }}>
-                            {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
-                        </Button>
+            <Fade in timeout={800}>
+                <Paper elevation={0} sx={{
+                    width: '100%',
+                    maxWidth: 420,
+                    p: { xs: 3, sm: 5 },
+                    borderRadius: 6,
+                    bgcolor: theme.palette.background.default,
+                    textAlign: 'center',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                    {/* Logo Section */}
+                    <Typography sx={{ fontSize: 56, mb: 1, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }}>☕</Typography>
+                    <Typography variant="h4" sx={{ 
+                        color: theme.palette.primary.main, 
+                        mb: 1,
+                        letterSpacing: '-0.5px'
+                    }}>
+                        Cà Phê Minh Hữu
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 4, fontWeight: 500 }}>
+                        Đặt món tại bàn • Nhanh chóng • Tiện lợi
+                    </Typography>
 
-                        <Divider sx={{ my: 2 }}>hoặc</Divider>
-
-                        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                            <GoogleLogin
-                                onSuccess={handleGoogleSuccess}
-                                onError={() => toast.error('Google login thất bại')}
-                                text="signin_with"
-                                shape="rectangular"
-                                locale="vi"
+                    {step === 'email' ? (
+                        <Box sx={{ textAlign: 'left' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, ml: 0.5, color: theme.palette.primary.main }}>
+                                Đăng nhập bằng Email
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                placeholder="example@gmail.com"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
+                                sx={{ mb: 3 }}
                             />
-                        </Box>
-
-                        <Typography variant="caption" sx={{
-                            display: 'block', textAlign: 'center',
-                            color: '#9ca3af', mt: 2
-                        }}>
-                            Bỏ qua đăng nhập? Bạn vẫn có thể đặt món nhưng không tích điểm
-                        </Typography>
-                    </>
-                ) : (
-                    <>
-                        <Typography sx={{ fontWeight: 700, color: COLORS.primary, mb: 0.5 }}>
-                            Nhập mã OTP
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#6b7280', mb: 2 }}>
-                            Đã gửi đến <strong>{email}</strong>
-                        </Typography>
-
-                        <TextField
-                            fullWidth size="small"
-                            placeholder="6 chữ số"
-                            value={otp}
-                            onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
-                            inputProps={{ maxLength: 6, style: { letterSpacing: 8, fontSize: 24, textAlign: 'center' } }}
-                            sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                        />
-
-                        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                            
                             <Button
-                                variant={wantRegister ? 'contained' : 'outlined'}
-                                size="small" onClick={() => setWantRegister(true)}
-                                sx={{
-                                    flex: 1, textTransform: 'none', borderRadius: 2,
-                                    bgcolor: wantRegister ? COLORS.primary : 'transparent',
-                                    borderColor: COLORS.primary, color: wantRegister ? '#fff' : COLORS.primary,
-                                    '&:hover': { bgcolor: wantRegister ? COLORS.accent : '#f5ece6' }
-                                }}>
-                                Đăng ký thành viên
+                                fullWidth
+                                variant="contained"
+                                onClick={handleSendOtp}
+                                disabled={loading}
+                                sx={{ height: 52, fontSize: 16 }}
+                            >
+                                {loading ? <CircularProgress size={24} color="inherit" /> : 'Gửi mã OTP'}
                             </Button>
+
+                            <Divider sx={{ my: 4, '&::before, &::after': { borderColor: 'rgba(0,0,0,0.08)' } }}>
+                                <Typography variant="caption" sx={{ color: theme.palette.text.secondary, px: 1, fontWeight: 600 }}>
+                                    HOẶC
+                                </Typography>
+                            </Divider>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={() => toast.error('Google login thất bại')}
+                                    theme="filled_blue"
+                                    shape="pill"
+                                    width="100%"
+                                    locale="vi"
+                                />
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: theme.palette.primary.main }}>
+                                Xác thực OTP
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 3 }}>
+                                Mã xác nhận đã được gửi tới<br/>
+                                <strong style={{ color: theme.palette.primary.main }}>{email}</strong>
+                            </Typography>
+
+                            <TextField
+                                fullWidth
+                                placeholder="● ● ● ● ● ●"
+                                value={otp}
+                                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
+                                inputProps={{ 
+                                    maxLength: 6, 
+                                    style: { 
+                                        letterSpacing: 12, 
+                                        fontSize: 28, 
+                                        textAlign: 'center',
+                                        fontWeight: 800,
+                                        fontFamily: 'monospace'
+                                    } 
+                                }}
+                                sx={{ mb: 3 }}
+                            />
+
+                            <Box sx={{ display: 'flex', gap: 1.5, mb: 3 }}>
+                                <Button
+                                    variant={wantRegister ? 'contained' : 'outlined'}
+                                    onClick={() => setWantRegister(true)}
+                                    sx={{ 
+                                        flex: 1, 
+                                        height: 40,
+                                        fontSize: 13,
+                                        bgcolor: wantRegister ? theme.palette.primary.main : 'transparent',
+                                        color: wantRegister ? '#fff' : theme.palette.primary.main
+                                    }}
+                                >
+                                    Đăng ký
+                                </Button>
+                                <Button
+                                    variant={!wantRegister ? 'contained' : 'outlined'}
+                                    onClick={() => setWantRegister(false)}
+                                    sx={{ 
+                                        flex: 1, 
+                                        height: 40,
+                                        fontSize: 13,
+                                        bgcolor: !wantRegister ? theme.palette.primary.main : 'transparent',
+                                        color: !wantRegister ? '#fff' : theme.palette.primary.main
+                                    }}
+                                >
+                                    Chỉ đặt món
+                                </Button>
+                            </Box>
+
                             <Button
-                                variant={!wantRegister ? 'contained' : 'outlined'}
-                                size="small" onClick={() => setWantRegister(false)}
-                                sx={{
-                                    flex: 1, textTransform: 'none', borderRadius: 2,
-                                    bgcolor: !wantRegister ? COLORS.primary : 'transparent',
-                                    borderColor: COLORS.primary, color: !wantRegister ? '#fff' : COLORS.primary,
-                                    '&:hover': { bgcolor: !wantRegister ? COLORS.accent : '#f5ece6' }
-                                }}>
-                                Chỉ đặt món
+                                fullWidth
+                                variant="contained"
+                                color="secondary"
+                                onClick={handleVerifyOtp}
+                                disabled={loading || otp.length !== 6}
+                                sx={{ height: 52, fontSize: 16, mb: 2 }}
+                            >
+                                {loading ? <CircularProgress size={24} color="inherit" /> : 'Xác nhận Đặt món'}
+                            </Button>
+
+                            <Button 
+                                onClick={() => setStep('email')}
+                                sx={{ color: theme.palette.text.secondary, fontSize: 13 }}
+                            >
+                                ← Quay lại nhập Email
                             </Button>
                         </Box>
+                    )}
 
-                        <Button fullWidth variant="contained" onClick={handleVerifyOtp}
-                            disabled={loading || otp.length !== 6}
-                            startIcon={loading && <CircularProgress size={16} color="inherit" />}
-                            sx={{
-                                bgcolor: COLORS.primary, py: 1.2, borderRadius: 2,
-                                textTransform: 'none', fontWeight: 700,
-                                '&:hover': { bgcolor: COLORS.accent }
-                            }}>
-                            {loading ? 'Đang xác thực...' : 'Xác nhận'}
+                    <Box sx={{ mt: 4 }}>
+                        <Button
+                            variant="text"
+                            color="secondary"
+                            onClick={handleSkipLogin}
+                            sx={{ 
+                                fontWeight: 600,
+                                '&:hover': { background: 'rgba(200, 134, 10, 0.05)' }
+                            }}
+                        >
+                            Bỏ qua đăng nhập?
                         </Button>
-
-                        <Button fullWidth onClick={() => setStep('email')}
-                            sx={{ mt: 1, textTransform: 'none', color: '#6b7280' }}>
-                            ← Đổi email
-                        </Button>
-                    </>
-                )}
-            </Paper>
+                    </Box>
+                </Paper>
+            </Fade>
         </Box>
     );
 };

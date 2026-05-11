@@ -34,6 +34,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Role = request.Role,
                 Salary = request.Salary,
                 SalaryCoefficient = request.SalaryCoefficient,
+                HourlyRate = request.HourlyRate,
                 IsActive = true,
                 IsFirstLogin = true  // Bắt đổi mật khẩu lần đầu
             };
@@ -63,6 +64,7 @@ namespace CaPheMinhHuu.Services.Implements
                 u.IsActive,
                 u.Salary,
                 u.SalaryCoefficient,
+                u.HourlyRate,
                 u.LastLoginAt,
                 u.CreatedDate
             }).ToList();
@@ -83,6 +85,7 @@ namespace CaPheMinhHuu.Services.Implements
             user.Role = request.Role;
             user.Salary = request.Salary;
             user.SalaryCoefficient = request.SalaryCoefficient;
+            user.HourlyRate = request.HourlyRate;
             await _userRepository.UpdateAsync(user);
             return new
             {

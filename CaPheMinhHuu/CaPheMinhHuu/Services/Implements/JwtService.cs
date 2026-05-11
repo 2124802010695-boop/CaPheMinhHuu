@@ -95,5 +95,31 @@ namespace CaPheMinhHuu.Services.Implements
                 CreatedByIp  = ipAddress ?? ""
             };
         }
+
+        public string GenerateGuestToken(string email)
+        {
+            var jwtSettings = _configuration.GetSection("Jwt");
+            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, email),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("email", email),
+                new Claim(ClaimTypes.Role, "Guest")
+            };
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject            = new ClaimsIdentity(claims),
+                Expires            = DateTime.UtcNow.AddHours(4),
+                Issuer             = jwtSettings["Issuer"],
+                Audience           = jwtSettings["Audience"],
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
+            };
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
     }
 }

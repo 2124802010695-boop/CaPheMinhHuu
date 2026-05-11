@@ -32,6 +32,7 @@ namespace CaPheMinhHuu.Data
         public DbSet<OtpCode> OtpCodes { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Coupon> Coupons { get; set; }
+        public DbSet<UserCoupon> UserCoupons { get; set; }
         public DbSet<IngredientUsageLog> IngredientUsageLogs { get; set; }
         public DbSet<RecipeVersion> RecipeVersions { get; set; }
         public DbSet<RecipeVersionLine> RecipeVersionLines { get; set; }
@@ -403,6 +404,24 @@ namespace CaPheMinhHuu.Data
                       .HasForeignKey(o => o.ShiftId)
                       .OnDelete(DeleteBehavior.SetNull);
             });
+
+            // --- UserCoupon ---
+            modelBuilder.Entity<UserCoupon>(entity =>
+            {
+                entity.HasOne(uc => uc.User)
+                      .WithMany()
+                      .HasForeignKey(uc => uc.UserId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(uc => uc.Coupon)
+                      .WithMany()
+                      .HasForeignKey(uc => uc.CouponId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasIndex(uc => new { uc.UserId, uc.CouponId });
+            });
+            modelBuilder.Entity<UserCoupon>()
+                .HasQueryFilter(uc => !uc.IsDeleted);
         }
         public DbSet<HolidayConfig> HolidayConfigs { get; set; }
         public DbSet<RequestTicket> RequestTickets { get; set; }  

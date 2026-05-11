@@ -19,3 +19,4 @@ obj/
 # môi trường
 *.env
 appsettings.Development.json
+appsettings.Production.json

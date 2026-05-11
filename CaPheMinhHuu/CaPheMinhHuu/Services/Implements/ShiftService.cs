@@ -25,7 +25,8 @@ namespace CaPheMinhHuu.Services.Implements
                 UserId = cashierId,
                 OpenTime = DateTime.Now,
                 OpeningCash = dto.OpeningCash,
-                Status = "PendingOpen"
+                Status = "PendingOpen",
+                ShiftType = dto.ShiftType ?? "Cashier"
             };
             await _shiftRepository.CreateAsync(shift);
             await _shiftRepository.LoadUserAsync(shift);
@@ -174,6 +175,29 @@ namespace CaPheMinhHuu.Services.Implements
 
             return MapToViewDto(shift);
         }
+
+        // ===================== KITCHEN =====================
+        public async Task<ShiftViewDto> KitchenCloseShiftAsync(int shiftId, int kitchenId)
+        {
+            var shift = await _shiftRepository.GetByIdWithDetailsAsync(shiftId);
+
+            if (shift == null || shift.UserId != kitchenId || shift.Status != "Open" || shift.ShiftType != "Kitchen")
+                throw new InvalidOperationException("Không tìm thấy ca bếp đang mở");
+
+            shift.CloseTime = DateTime.Now;
+            shift.Status = "Closed";
+            // Kitchen không có tiền quỹ, không cần tính doanh thu
+            shift.ClosingCash = null;
+            shift.TotalOrders = null;
+            shift.TotalRevenue = null;
+            shift.Difference = null;
+
+            await _shiftRepository.UpdateAsync(shift);
+
+            _logger.LogInformation("Kitchen #{KitchenId} đóng ca #{ShiftId}", kitchenId, shiftId);
+
+            return MapToViewDto(shift);
+        }
         // ===================== HELPERS =====================
         private async Task<ZReportDto> BuildZReport(Shift shift)
         {
@@ -239,6 +263,7 @@ namespace CaPheMinhHuu.Services.Implements
                 TotalRevenue = shift.TotalRevenue,
                 CashRevenue = cashRevenue,
                 Status = shift.Status,
+                ShiftType = shift.ShiftType,
                 RejectReason = shift.RejectReason
             };
         }

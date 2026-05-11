@@ -227,6 +227,7 @@ namespace CaPheMinhHuu.Services.Implements
                 OrderCode = order.OrderCode,
                 Email = order.Email,
                 CashierName = order.User?.FullName,
+                IsPaid = order.IsPaid,
                 Items = order.OrderItems.Select(oi => new OrderItemViewDto
                 {
                     ProductId = oi.ProductId,
@@ -419,7 +420,11 @@ namespace CaPheMinhHuu.Services.Implements
                 }
             }
 
-            await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", id, newStatus);
+            await _hubContext.Clients.Group($"Order_{order.OrderCode}")
+                .SendAsync("OrderStatusUpdated", order.OrderCode, newStatus);
+            
+            // Đồng thời notify cho staff/admin (group Broadcast hoặc Operations)
+            await _hubContext.Clients.Group("Broadcast").SendAsync("OrderStatusUpdated", id, newStatus);
         }
 
         public async Task<OrderViewDto> CreateGuestOrderAsync(GuestOrderCreateDto dto)

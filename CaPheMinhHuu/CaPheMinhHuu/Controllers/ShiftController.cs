@@ -80,6 +80,48 @@ namespace CaPheMinhHuu.Controllers
             }
             
         }
+        // ===================== KITCHEN =====================
+        [Authorize(Roles = "Kitchen")]
+        [HttpPost("kitchen/request-open")]
+        public async Task<IActionResult> KitchenRequestOpenShift()
+        {
+            var result = await _shiftService.RequestOpenShiftAsync(GetUserId(), new ShiftOpenDto { OpeningCash = 0, ShiftType = "Kitchen" });
+            // Gán ShiftType = Kitchen sau khi tạo — dùng lại RequestOpenShiftAsync của Cashier
+            await _shiftHub.Clients.Group("Admin").SendAsync("ShiftPendingApproval", new
+            {
+                shiftId = result.Id,
+                cashierName = result.UserName,
+                openingCash = 0,
+                message = $"[BẾP] {result.UserName} yêu cầu mở ca"
+            });
+            return Ok(result);
+        }
+
+        [Authorize(Roles = "Kitchen")]
+        [HttpPost("kitchen/close/{shiftId}")]
+        public async Task<IActionResult> KitchenCloseShift(int shiftId)
+        {
+            try
+            {
+                var result = await _shiftService.KitchenCloseShiftAsync(shiftId, GetUserId());
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "Kitchen")]
+        [HttpGet("kitchen/current")]
+        public async Task<IActionResult> KitchenGetCurrentShift()
+        {
+            var shift = await _shiftService.GetCurrentShiftAsync(GetUserId());
+            if (shift == null)
+                return Ok(new { message = "Chưa có ca", shift = (object?)null });
+            return Ok(shift);
+        }
+
         // ===================== ADMIN =====================
         [Authorize(Roles = "Admin")]
         [HttpGet("admin/pending")]

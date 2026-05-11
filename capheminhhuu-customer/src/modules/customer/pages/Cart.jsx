@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Box, Typography, IconButton, Button, TextField,
-    Divider, Paper, Avatar
+    Divider, Paper, Avatar, AppBar, Toolbar, useTheme,
+    Container, Stack
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -10,17 +11,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import toast from 'react-hot-toast';
 
-const COLORS = {
-    primary: '#3D1A0A',
-    accent:  '#C8860A',
-    surface: '#FDF6F0',
-    muted:   '#8B6F5E',
-};
-
 const Cart = () => {
+    const theme = useTheme();
     const navigate  = useNavigate();
     const location  = useLocation();
-    const tableId   = location.state?.tableId || new URLSearchParams(window.location.search).get('tableId');
+    const tableId = location.state?.tableId 
+        || sessionStorage.getItem('tableId') 
+        || new URLSearchParams(window.location.search).get('tableId');
 
     const [cart, setCart] = useState(() => {
         try { return JSON.parse(localStorage.getItem('cart') || '[]'); }
@@ -32,148 +29,235 @@ const Cart = () => {
         localStorage.setItem('cart', JSON.stringify(newCart));
     };
 
-    const updateQty = (id, delta) => {
-        const updated = cart.map(i => i.id === id
+    const getItemKey = (i) => i.cartKey || `${i.id}_${i.sizeLabel}_${i.sugarLevel}_${i.iceLevel}`;
+
+    const updateQty = (key, delta) => {
+        const updated = cart.map(i => getItemKey(i) === key
             ? { ...i, quantity: Math.max(1, i.quantity + delta) }
             : i);
         updateCart(updated);
     };
 
-    const updateNote = (id, note) => {
-        updateCart(cart.map(i => i.id === id ? { ...i, note } : i));
+    const updateNote = (key, note) => {
+        updateCart(cart.map(i => getItemKey(i) === key ? { ...i, note } : i));
     };
 
-    const removeItem = (id) => {
-        updateCart(cart.filter(i => i.id !== id));
+    const removeItem = (key) => {
+        updateCart(cart.filter(i => getItemKey(i) !== key));
         toast.success('Đã xóa khỏi giỏ');
+    };
+
+    const clearAll = () => {
+        updateCart([]);
+        toast.success('Đã xóa toàn bộ giỏ hàng');
     };
 
     const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
     const handleOrder = () => {
         if (cart.length === 0) { toast.error('Giỏ hàng trống'); return; }
-        const user = localStorage.getItem('customerUser');
-        if (!user) {
+        const customerToken = localStorage.getItem('customerToken');
+        const guestToken    = localStorage.getItem('guestToken');
+        if (!customerToken && !guestToken) {
             navigate('/login', { state: { tableId, returnTo: '/cart' } });
             return;
         }
-        navigate('/confirm-order', { state: { cart, tableId } });
+        const guestEmail = localStorage.getItem('guestEmail') || null;
+        navigate('/confirm-order', { state: { cart, tableId, guestEmail } });
     };
 
     return (
-        <Box sx={{ bgcolor: COLORS.surface, minHeight: '100vh', pb: 12 }}>
+        <Box sx={{ bgcolor: theme.palette.background.default, minHeight: '100vh', pb: 12 }}>
             {/* Header */}
-            <Box sx={{
-                background: `linear-gradient(135deg, ${COLORS.primary} 0%, #6B2D0A 100%)`,
-                px: 2, py: 2,
-                display: 'flex', alignItems: 'center', gap: 1
-            }}>
-                <IconButton onClick={() => navigate(-1)} sx={{ color: '#fff' }}>
-                    <ArrowBackIcon />
-                </IconButton>
-                <Typography variant="h6" sx={{
-                    fontFamily: '"Playfair Display", serif',
-                    color: '#fff', fontWeight: 700
+            <AppBar position="sticky" elevation={0} sx={{ bgcolor: theme.palette.primary.main }}>
+                <Toolbar sx={{ justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <IconButton onClick={() => navigate(-1)} sx={{ color: '#fff', mr: 1 }}>
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
+                            Giỏ hàng của bạn
+                        </Typography>
+                    </Box>
+                    {cart.length > 0 && (
+                        <Button 
+                            onClick={clearAll} 
+                            sx={{ color: theme.palette.secondary.main, fontSize: 12, fontWeight: 700 }}
+                        >
+                            Xóa tất cả
+                        </Button>
+                    )}
+                </Toolbar>
+            </AppBar>
+
+            <Container maxWidth="md" sx={{ py: 3 }}>
+                {cart.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 10 }}>
+                        <Typography sx={{ fontSize: 80, mb: 2 }}>🛒</Typography>
+                        <Typography variant="h4" sx={{ color: theme.palette.primary.main, mb: 1 }}>
+                            Giỏ hàng trống
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: theme.palette.text.secondary, mb: 4 }}>
+                            Hãy chọn món từ menu nhé!
+                        </Typography>
+                        <Button 
+                            variant="contained" 
+                            onClick={() => navigate('/menu', { state: { tableId } })}
+                            sx={{ px: 4, py: 1.5 }}
+                        >
+                            Xem Menu ngay
+                        </Button>
+                    </Box>
+                ) : (
+                    <Stack spacing={2}>
+                        {cart.map((item) => {
+                            const itemKey = getItemKey(item);
+                            return (
+                                <Paper key={itemKey} elevation={0} sx={{
+                                    p: 2,
+                                    borderRadius: 4,
+                                    border: '1px solid rgba(0,0,0,0.05)',
+                                    position: 'relative',
+                                    display: 'flex',
+                                    gap: 2
+                                }}>
+                                    {/* Product Image */}
+                                    <Box sx={{ position: 'relative' }}>
+                                        {item.imageUrl ? (
+                                            <Avatar 
+                                                src={item.imageUrl} 
+                                                variant="rounded" 
+                                                sx={{ width: 64, height: 64, borderRadius: 3 }}
+                                            />
+                                        ) : (
+                                            <Box sx={{ 
+                                                width: 64, height: 64, borderRadius: 3,
+                                                bgcolor: theme.palette.primary.main,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 32
+                                            }}>☕</Box>
+                                        )}
+                                    </Box>
+
+                                    {/* Product Content */}
+                                    <Box sx={{ flex: 1 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: theme.palette.primary.main, lineHeight: 1.2 }}>
+                                                {item.name}
+                                            </Typography>
+                                            <IconButton 
+                                                size="small" 
+                                                onClick={() => removeItem(itemKey)}
+                                                sx={{ color: theme.palette.error.main, p: 0, mt: -0.5 }}
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+
+                                        {/* Options Summary */}
+                                        <Typography variant="caption" sx={{ color: theme.palette.secondary.main, fontStyle: 'italic', display: 'block', mb: 1 }}>
+                                            {item.displayOptions || item.sizeLabel || 'Mặc định'}
+                                        </Typography>
+
+                                        <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                                            Đơn giá: {item.price.toLocaleString('vi-VN')}đ
+                                        </Typography>
+
+                                        {/* Quantity & Subtotal Row */}
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'rgba(61,26,10,0.04)', borderRadius: 2, p: 0.5 }}>
+                                                <IconButton 
+                                                    size="small" 
+                                                    onClick={() => updateQty(itemKey, -1)}
+                                                    sx={{ 
+                                                        border: `1px solid ${theme.palette.primary.main}`, 
+                                                        width: 28, height: 28, borderRadius: 2,
+                                                        color: theme.palette.primary.main 
+                                                    }}
+                                                >
+                                                    <RemoveIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                                <Typography sx={{ fontWeight: 700, minWidth: 20, textAlign: 'center' }}>
+                                                    {item.quantity}
+                                                </Typography>
+                                                <IconButton 
+                                                    size="small" 
+                                                    onClick={() => updateQty(itemKey, 1)}
+                                                    sx={{ 
+                                                        bgcolor: theme.palette.primary.main, 
+                                                        width: 28, height: 28, borderRadius: 2,
+                                                        color: '#fff',
+                                                        '&:hover': { bgcolor: theme.palette.secondary.main }
+                                                    }}
+                                                >
+                                                    <AddIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Box>
+                                            
+                                            <Typography variant="h6" sx={{ 
+                                                color: theme.palette.secondary.main, 
+                                                fontWeight: 700,
+                                                fontFamily: "'Playfair Display', serif"
+                                            }}>
+                                                {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                                            </Typography>
+                                        </Box>
+
+                                        {/* Note field */}
+                                        <TextField 
+                                            fullWidth 
+                                            size="small" 
+                                            placeholder="Ghi chú món này..."
+                                            value={item.note || ''}
+                                            onChange={e => updateNote(itemKey, e.target.value)}
+                                            sx={{ mt: 2, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: 12, bgcolor: 'rgba(0,0,0,0.02)' } }}
+                                        />
+                                    </Box>
+                                </Paper>
+                            );
+                        })}
+                    </Stack>
+                )}
+            </Container>
+
+            {/* Sticky Footer */}
+            {cart.length > 0 && (
+                <Box sx={{ 
+                    position: 'fixed', bottom: 0, left: 0, right: 0,
+                    bgcolor: '#fff', 
+                    p: 2, 
+                    borderTop: `2px solid ${theme.palette.background.default}`,
+                    boxShadow: '0 -10px 40px rgba(61,26,10,0.1)',
+                    zIndex: 1000
                 }}>
-                    Giỏ hàng {tableId && `· Bàn ${tableId}`}
-                </Typography>
-            </Box>
-
-            {cart.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                    <Typography sx={{ fontSize: 64 }}>🛒</Typography>
-                    <Typography sx={{ color: COLORS.muted, mt: 1 }}>Giỏ hàng trống</Typography>
-                    <Button onClick={() => navigate('/menu')}
-                        sx={{ mt: 2, color: COLORS.primary, textTransform: 'none' }}>
-                        ← Quay lại menu
-                    </Button>
-                </Box>
-            ) : (
-                <Box sx={{ px: 2, pt: 2 }}>
-                    {cart.map((item, idx) => (
-                        <Paper key={item.id} elevation={0} sx={{
-                            mb: 2, p: 2, borderRadius: 3,
-                            border: '1px solid #f0e6dc'
-                        }}>
-                            <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5 }}>
-                                <Avatar src={item.imageUrl} variant="rounded"
-                                    sx={{ width: 56, height: 56, bgcolor: '#f5ece6', fontSize: 28 }}>
-                                    {!item.imageUrl && '☕'}
-                                </Avatar>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography sx={{ fontWeight: 700, color: COLORS.primary, fontSize: 14 }}>
-                                        {item.name}
-                                    </Typography>
-                                    <Typography sx={{ color: COLORS.accent, fontWeight: 800, fontSize: 15 }}>
-                                        {(item.price * item.quantity).toLocaleString('vi-VN')}đ
-                                    </Typography>
-                                </Box>
-                                <IconButton size="small" onClick={() => removeItem(item.id)}
-                                    sx={{ color: '#ef4444', alignSelf: 'flex-start' }}>
-                                    <DeleteIcon fontSize="small" />
-                                </IconButton>
-                            </Box>
-
-                            {/* Quantity */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <IconButton size="small" onClick={() => updateQty(item.id, -1)}
-                                    sx={{ border: `1px solid ${COLORS.primary}`, p: 0.3 }}>
-                                    <RemoveIcon fontSize="small" sx={{ color: COLORS.primary }} />
-                                </IconButton>
-                                <Typography sx={{ fontWeight: 700, minWidth: 24, textAlign: 'center' }}>
-                                    {item.quantity}
-                                </Typography>
-                                <IconButton size="small" onClick={() => updateQty(item.id, 1)}
-                                    sx={{ bgcolor: COLORS.primary, p: 0.3, '&:hover': { bgcolor: COLORS.accent } }}>
-                                    <AddIcon fontSize="small" sx={{ color: '#fff' }} />
-                                </IconButton>
-                            </Box>
-
-                            {/* Note */}
-                            <TextField fullWidth size="small" placeholder="Ghi chú (không đường, ít đá...)"
-                                value={item.note || ''}
-                                onChange={e => updateNote(item.id, e.target.value)}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: 2,
-                                        fontSize: 13,
-                                        '& fieldset': { borderColor: '#f0e6dc' }
-                                    }
-                                }}
-                            />
-                        </Paper>
-                    ))}
-
-                    {/* Total */}
-                    <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: `2px solid ${COLORS.accent}`, mb: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography sx={{ color: COLORS.muted }}>Tạm tính</Typography>
-                            <Typography sx={{ fontWeight: 700 }}>{total.toLocaleString('vi-VN')}đ</Typography>
-                        </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography sx={{ fontWeight: 700, color: COLORS.primary }}>Tổng cộng</Typography>
-                            <Typography sx={{ fontWeight: 800, color: COLORS.accent, fontSize: 18 }}>
+                    <Container maxWidth="md">
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
+                                Tổng cộng
+                            </Typography>
+                            <Typography variant="h4" sx={{ 
+                                color: theme.palette.secondary.main, 
+                                fontWeight: 800,
+                                fontFamily: "'Playfair Display', serif"
+                            }}>
                                 {total.toLocaleString('vi-VN')}đ
                             </Typography>
                         </Box>
-                    </Paper>
-                </Box>
-            )}
-
-            {/* Bottom CTA */}
-            {cart.length > 0 && (
-                <Box sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, p: 2, bgcolor: '#fff', borderTop: '1px solid #f0e6dc' }}>
-                    <Button fullWidth variant="contained" onClick={handleOrder}
-                        sx={{
-                            bgcolor: COLORS.primary, py: 1.5,
-                            fontFamily: '"Playfair Display", serif',
-                            fontSize: 16, fontWeight: 700,
-                            textTransform: 'none', borderRadius: 3,
-                            '&:hover': { bgcolor: COLORS.accent }
-                        }}>
-                        Đặt món · {total.toLocaleString('vi-VN')}đ
-                    </Button>
+                        <Button 
+                            fullWidth 
+                            variant="contained" 
+                            size="large"
+                            onClick={handleOrder}
+                            sx={{ 
+                                height: 56, 
+                                fontSize: 18,
+                                fontWeight: 700,
+                                fontFamily: "'Playfair Display', serif"
+                            }}
+                        >
+                            Đặt món ngay →
+                        </Button>
+                    </Container>
                 </Box>
             )}
         </Box>

@@ -17,5 +17,6 @@ namespace CaPheMinhHuu.DTOs.Shift
         public int? AdminId { get; set; }
         public string? AdminName { get; set; }
         public string? RejectReason { get; set; }
+        public string ShiftType { get; set; } = "Cashier";
     }
 }

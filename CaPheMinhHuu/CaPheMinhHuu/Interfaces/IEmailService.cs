@@ -14,5 +14,6 @@ namespace CaPheMinhHuu.Interfaces
 
 
         Task SendPaymentReceiptAsync(string toEmail, string orderCode, string transactionId, decimal amount);
+        Task SendWelcomeVoucherAsync(string toEmail, string fullName, string voucherCode);
     }
 }

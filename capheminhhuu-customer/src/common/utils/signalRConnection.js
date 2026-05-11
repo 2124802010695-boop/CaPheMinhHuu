@@ -4,23 +4,35 @@ const APP_HUB_URL = import.meta.env.VITE_HUB_URL || 'https://localhost:7280/appH
 
 let connection = null;
 
-const getToken = () => localStorage.getItem('customerToken') || '';
+const getToken = () =>
+    localStorage.getItem('customerToken') ||
+    localStorage.getItem('guestToken') || '';
 
-export const startConnection = async () => {
+let currentOrderCode = null;
+
+export const startConnection = async (orderCode = '') => {
+    // Nếu orderCode thay đổi, stop connection cũ để tạo cái mới với group mới
+    if (connection && orderCode !== currentOrderCode) {
+        await stopConnection();
+    }
+
     if (connection && (
         connection.state === signalR.HubConnectionState.Connected ||
         connection.state === signalR.HubConnectionState.Connecting ||
         connection.state === signalR.HubConnectionState.Reconnecting
     )) return connection;
 
-    if (connection && connection.state === signalR.HubConnectionState.Disconnecting) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        connection = null;
-    }
-
     if (!connection) {
+        currentOrderCode = orderCode;
+        let url = APP_HUB_URL;
+        if (orderCode) {
+            url += `?orderCode=${orderCode}`;
+        }
+
         connection = new signalR.HubConnectionBuilder()
-            .withUrl(`${APP_HUB_URL}?access_token=${getToken()}`)
+            .withUrl(url, {
+                accessTokenFactory: () => getToken()
+            })
             .withAutomaticReconnect([0, 2000, 5000, 10000])
             .configureLogging(signalR.LogLevel.Warning)
             .build();
@@ -28,10 +40,12 @@ export const startConnection = async () => {
 
     try {
         await connection.start();
-        console.log('[SignalR Customer] Connected to AppHub');
+        console.log(`[SignalR Customer] Connected to AppHub ${orderCode ? `(Order: ${orderCode})` : ''}`);
         return connection;
     } catch (err) {
         console.error('[SignalR Customer] Connection failed:', err);
+        connection = null;
+        currentOrderCode = null;
         throw err;
     }
 };
@@ -39,7 +53,10 @@ export const startConnection = async () => {
 export const stopConnection = async () => {
     if (connection) {
         try { await connection.stop(); }
-        finally { connection = null; }
+        finally { 
+            connection = null;
+            currentOrderCode = null;
+        }
     }
 };
 

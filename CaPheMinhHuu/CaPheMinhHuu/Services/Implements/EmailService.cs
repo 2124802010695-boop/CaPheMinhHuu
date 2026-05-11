@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Mail;
 using System.Text;
 using Microsoft.Extensions.Configuration;
@@ -124,6 +124,32 @@ namespace CaPheMinhHuu.Services.Implements
                             </ul>
                         </div>
                         <p>Cảm ơn bạn đã sử dụng dịch vụ. Hẹn gặp lại bạn sớm nhất!</p>
+                        {_emailFooter}
+                    </div>
+                </div>";
+
+            await SendEmailCoreAsync(toEmail, subject, body);
+        }
+
+        public async Task SendWelcomeVoucherAsync(string toEmail, string fullName, string voucherCode)
+        {
+            string subject = "Chào mừng bạn đến với Cà Phê Minh Hữu 🎉";
+            string body = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;'>
+                    <div style='background-color: #3D1A0A; color: white; padding: 20px; text-align: center;'>
+                        <h2>Chào mừng bạn đến với Cà Phê Minh Hữu!</h2>
+                    </div>
+                    <div style='padding: 20px; color: #333; line-height: 1.6;'>
+                        <p>Xin chào <strong>{fullName}</strong>,</p>
+                        <p>Cảm ơn bạn đã đăng ký tài khoản. Để chào đón bạn, chúng tôi tặng bạn một ưu đãi đặc biệt:</p>
+                        <div style='text-align: center; margin: 24px 0;'>
+                            <div style='display: inline-block; background-color: #FDF6F0; border: 2px dashed #C8860A; border-radius: 8px; padding: 16px 32px;'>
+                                <div style='font-size: 13px; color: #666; margin-bottom: 4px;'>Mã giảm giá của bạn</div>
+                                <div style='font-size: 28px; font-weight: bold; color: #3D1A0A; letter-spacing: 4px;'>{voucherCode}</div>
+                                <div style='font-size: 13px; color: #C8860A; margin-top: 4px;'>Giảm 50% đơn hàng đầu tiên (tối đa 50.000đ)</div>
+                            </div>
+                        </div>
+                        <p style='color: #666; font-size: 13px;'>Voucher có hiệu lực trong 30 ngày kể từ ngày đăng ký.</p>
                         {_emailFooter}
                     </div>
                 </div>";
