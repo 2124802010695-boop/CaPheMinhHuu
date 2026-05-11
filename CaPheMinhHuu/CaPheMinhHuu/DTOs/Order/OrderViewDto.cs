@@ -12,6 +12,9 @@ namespace CaPheMinhHuu.DTOs.Order
         public int? TableId { get; set; }
         public string? TableName { get; set; }
         public string? OrderCode { get; set; }
+        public string? Email { get; set; }
+        public string? CashierName { get; set; }
+        public bool IsPaid { get; set; }
         public List<OrderItemViewDto> Items { get; set; } = new();
     }
     

@@ -18,6 +18,7 @@ const NAV_ITEMS = [
     { to: '/cashier/pos', icon: 'point_of_sale', label: 'Bán hàng' },
     { to: '/cashier/tables', icon: 'table_restaurant', label: 'Sơ đồ bàn' },
     { to: '/cashier/orders', icon: 'receipt_long', label: 'Đơn hàng' },
+    { to: '/cashier/payment', icon: 'payments', label: 'Thanh toán' },
 ];
 
 // Các route được phép truy cập khi CHƯA mở ca
@@ -47,10 +48,15 @@ export default function LayoutCashier() {
             }
         } catch (err) {
             const status = err?.response?.status;
-            if (status === 401 || status === 403) {
-                // Token hết hạn → axiosCustomize sẽ tự refresh
-                // Không set shiftStatus = 'none' vội
+            if (status === 401) {
                 setShiftStatus('loading');
+                // axiosCustomize sẽ tự refresh token
+            } else if (status === 403) {
+                // Token sai role hoàn toàn → logout
+                localStorage.removeItem('cashierToken');
+                localStorage.removeItem('cashierRefreshToken');
+                localStorage.removeItem('cashierUser');
+                navigate('/login', { replace: true });
             } else {
                 console.error('Lỗi kiểm tra ca:', err);
                 setShiftStatus('none');
@@ -121,7 +127,7 @@ export default function LayoutCashier() {
         weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
     });
 
-    const staffUser = JSON.parse(localStorage.getItem('staffUser') || '{}');
+    const staffUser = JSON.parse(localStorage.getItem('cashierUser') || '{}');
     const staffName = staffUser.fullName || 'Thu ngân';
     const staffRole = staffUser.role || 'Cashier';
 
@@ -130,14 +136,14 @@ export default function LayoutCashier() {
     const handleLogout = async () => {
         if (!window.confirm('Bạn có chắc muốn đăng xuất?')) return;
         try {
-            const refreshToken = localStorage.getItem('staffRefreshToken');
+            const refreshToken = localStorage.getItem('cashierRefreshToken');
             if (refreshToken) await revokeTokenAPI(refreshToken);
         } catch (err) {
             console.warn('Revoke token failed:', err);
         } finally {
-            localStorage.removeItem('staffToken');
-            localStorage.removeItem('staffUser');
-            localStorage.removeItem('staffRefreshToken');
+            localStorage.removeItem('cashierToken');
+            localStorage.removeItem('cashierUser');
+            localStorage.removeItem('cashierRefreshToken');
             stopConnection();
             navigate('/staff/login');
         }
@@ -252,7 +258,7 @@ export default function LayoutCashier() {
             </aside>
 
             {/* MAIN CONTENT CONTAINER */}
-            <div className="flex flex-col h-full ml-64 flex-1 min-w-0">
+            <div className="flex flex-col h-full ml-52 flex-1 min-w-0 overflow-hidden">
 
                 {/* TOP BAR */}
                 <header className="flex-shrink-0 h-16 z-40 bg-[#131313]/70 backdrop-blur-xl flex items-center justify-end px-8 gap-6 text-sm font-medium border-b border-[#3c4a42]/10">

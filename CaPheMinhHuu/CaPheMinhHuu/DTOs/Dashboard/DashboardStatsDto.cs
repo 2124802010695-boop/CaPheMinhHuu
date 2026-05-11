@@ -23,6 +23,8 @@ namespace CaPheMinhHuu.DTOs.Dashboard
         // === Hourly & Operations ===
         public List<RevenueByHourDto> RevenueByHour { get; set; } = new();
         public List<StaffShiftSummaryDto> StaffShiftSummary { get; set; } = new();
+        public List<RevenueByPaymentMethodDto> RevenueByPaymentMethod { get; set; } = new();
+        public List<TopToppingDto> TopToppings { get; set; } = new();
         public decimal CancellationRate { get; set; }
     }
 
@@ -77,5 +79,73 @@ namespace CaPheMinhHuu.DTOs.Dashboard
         public decimal TotalHours { get; set; }           
         public decimal TotalRevenue { get; set; }
         public DateTime? LastShiftDate { get; set; }
+    }
+
+    public class RevenueByPaymentMethodDto
+    {
+        public string PaymentMethod { get; set; } = null!;
+        public decimal Revenue { get; set; }
+        public int OrderCount { get; set; }
+    }
+
+    public class TopToppingDto
+    {
+        public int ToppingId { get; set; }
+        public string ToppingName { get; set; } = null!;
+        public int Quantity { get; set; }
+        public decimal Revenue { get; set; }
+    }
+
+    public class RangeDashboardStatsDto
+    {
+        public DateTime From { get; set; }
+        public DateTime To { get; set; }
+        public decimal TotalRevenue { get; set; }
+        public int TotalOrders { get; set; }
+        public decimal CancellationRate { get; set; }
+        public List<RevenueByDayDto> RevenueByDay { get; set; } = new();
+        public List<TopProductDto> TopProducts { get; set; } = new();
+        public List<RevenueByPaymentMethodDto> RevenueByPaymentMethod { get; set; } = new();
+        public List<TopToppingDto> TopToppings { get; set; } = new();
+    }
+
+    // D3 — WACC per ingredient
+    public class IngredientWaccDto
+    {
+        public int IngredientId { get; set; }
+        public string IngredientName { get; set; } = null!;
+        public string BaseUnit { get; set; } = null!;
+
+        // WACC = Σ(CurrentQty × ImportPrice) / Σ(CurrentQty)
+        // Include tất cả batch trừ IsDeleted (kể cả expired — chờ Dispose)
+        public decimal WACC { get; set; }                   // round 4 decimals
+
+        public decimal TotalStock { get; set; }              // Σ(CurrentQty) của tất cả batch !IsDeleted
+        public decimal TotalInventoryValue { get; set; }     // round 2 decimals = WACC × TotalStock
+        public int BatchCount { get; set; }                  // số batch !IsDeleted
+        public int ExpiredBatchCount { get; set; }           // số batch đã quá hạn (để admin tracking)
+        public DateTime? OldestBatchDate { get; set; }       // FIFO indicator
+        public DateTime? NewestBatchDate { get; set; }
+    }
+
+    // D4 — Ingredient variance report
+    public class IngredientVarianceDto
+    {
+        public int IngredientId { get; set; }
+        public string IngredientName { get; set; } = null!;
+        public string BaseUnit { get; set; } = null!;
+
+        // Từ IngredientUsageLog trong khoảng thời gian
+        public decimal TheoreticalTotal { get; set; }        // SUM(TheoreticalQty)
+        public decimal ActualTotal { get; set; }             // SUM(DeductedQty)
+        public decimal VarianceTotal { get; set; }           // ActualTotal - TheoreticalTotal
+        public decimal VariancePct { get; set; }             // % so với theoretical, 0 nếu TheoreticalTotal = 0
+
+        // Cost
+        public decimal TotalCost { get; set; }               // SUM(TotalCost) từ UsageLog — round 2 decimals
+        public decimal HistoricalAvgCost { get; set; }       // AVG(CostPerBaseUnit) từ log trong period — round 4 decimals
+        public decimal CurrentWACC { get; set; }             // WACC hiện tại từ batch — round 4 decimals
+
+        public int MovementCount { get; set; }               // số batch movements trong period
     }
 }

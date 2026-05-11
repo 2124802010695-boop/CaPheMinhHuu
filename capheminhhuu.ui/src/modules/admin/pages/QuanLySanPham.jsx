@@ -11,9 +11,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CalculateIcon from '@mui/icons-material/Calculate';
+import AspectRatioIcon from '@mui/icons-material/AspectRatio';
 
 import { getProductsAPI, deleteProductAPI, uploadProductImageAPI } from '../services/productService';
 import ModalAddProduct from '../components/ModalAddProduct';
+import ModalRecipe from '../components/ModalRecipe';
+import ModalManageSizes from '../components/ModalManageSizes';
 
 
 const DRAWER_WIDTH = 340;
@@ -28,6 +32,10 @@ const QuanLySanPham = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const [recipeModalOpen, setRecipeModalOpen] = useState(false);
+    const [recipeProduct, setRecipeProduct] = useState(null);
+    const [sizeModalOpen, setSizeModalOpen] = useState(false);
+    const [sizeProduct, setSizeProduct] = useState(null);
 
     const fetchProducts = async () => {
         try {
@@ -51,6 +59,7 @@ const QuanLySanPham = () => {
         setDrawerOpen(false);
         setSelectedProduct(null);
         setPendingFile(null);
+        if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
     };
 
@@ -347,6 +356,25 @@ const QuanLySanPham = () => {
                                     </Typography>
                                 </Box>
                             ))}
+
+                            <Divider sx={{ my: 2 }} />
+
+                            <Button
+                                fullWidth variant="outlined"
+                                startIcon={<CalculateIcon />}
+                                onClick={() => { setRecipeProduct(selectedProduct); setRecipeModalOpen(true); }}
+                                sx={{ mb: 1, textTransform: 'none', borderColor: '#fa709a', color: '#fa709a', '&:hover': { bgcolor: '#fff5f8' } }}
+                            >
+                                Cấu hình Định mức
+                            </Button>
+                            <Button
+                                fullWidth variant="outlined"
+                                startIcon={<AspectRatioIcon />}
+                                onClick={() => { setSizeProduct(selectedProduct); setSizeModalOpen(true); }}
+                                sx={{ textTransform: 'none', borderColor: '#667eea', color: '#667eea', '&:hover': { bgcolor: '#f5f5ff' } }}
+                            >
+                                Quản lý Size
+                            </Button>
                         </Box>
 
                         {/* Drawer footer */}
@@ -370,6 +398,16 @@ const QuanLySanPham = () => {
             </Drawer>
 
             <ModalAddProduct open={openModal} handleClose={() => setOpenModal(false)} fetchProducts={fetchProducts} />
+            <ModalRecipe
+                open={recipeModalOpen}
+                handleClose={() => { setRecipeModalOpen(false); setRecipeProduct(null); }}
+                product={recipeProduct}
+            />
+            <ModalManageSizes
+                open={sizeModalOpen}
+                handleClose={() => { setSizeModalOpen(false); setSizeProduct(null); }}
+                product={sizeProduct}
+            />
         </Box>
     );
 };

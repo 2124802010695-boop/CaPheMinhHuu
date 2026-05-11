@@ -20,9 +20,15 @@ const deleteBatchAPI = (ingredientId, batchId) => {
     return axios.delete(`/Ingredient/${ingredientId}/batch/${batchId}`);
 };
 
+// API xuất hủy lô hàng hết hạn (set CurrentQuantity = 0, giữ lịch sử)
+const disposeBatchAPI = (ingredientId, batchId) => {
+    return axios.put(`/Ingredient/${ingredientId}/batch/${batchId}/dispose`);
+};
+
 export {
     createBatchAPI,
     getBatchesByIngredientAPI,
     updateBatchAPI,
-    deleteBatchAPI
+    deleteBatchAPI,
+    disposeBatchAPI
 };

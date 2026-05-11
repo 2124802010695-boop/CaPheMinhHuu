@@ -25,10 +25,23 @@ const deleteIngredientAPI = (id) => {
     return axios.delete(`/Ingredient/${id}`);
 };
 
+const generateSkuAPI = (name) => axios.post('/Ingredient/generate-sku', { name });
+
+// 7. API thêm đơn vị quy đổi
+const addUnitAPI = (ingredientId, data) =>
+    axios.post(`/Ingredient/${ingredientId}/units`, data);
+
+// 8. API xóa đơn vị quy đổi
+const deleteUnitAPI = (ingredientId, unitId) =>
+    axios.delete(`/Ingredient/${ingredientId}/units/${unitId}`);
+
 export {
     createIngredientAPI,
     getIngredientsAPI,
     getIngredientByIdAPI,
     updateIngredientAPI,
-    deleteIngredientAPI
+    deleteIngredientAPI,
+    generateSkuAPI,
+    addUnitAPI,
+    deleteUnitAPI
 };

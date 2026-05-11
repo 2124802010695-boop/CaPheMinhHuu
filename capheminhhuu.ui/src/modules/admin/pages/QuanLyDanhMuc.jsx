@@ -6,14 +6,21 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 import CategoryIcon from '@mui/icons-material/Category';
 import FolderIcon from '@mui/icons-material/Folder';
 import { getCategoriesAPI, deleteCategoryAPI } from '../services/categoryService';
 import ModalAddCategory from '../components/ModalAddCategory';
+import ModalEditCategory from '../components/ModalEditCategory';
 
 const QuanLyDanhMuc = () => {
     const [categories, setCategories] = useState([]);
     const [openModal, setOpenModal] = useState(false);
+    const [editModal, setEditModal] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+
+    const handleOpenEdit = (cat) => { setSelectedCategory(cat); setEditModal(true); };
+    const handleCloseEdit = () => { setEditModal(false); setSelectedCategory(null); };
 
     const fetchCategories = async () => {
         try {
@@ -167,13 +174,14 @@ const QuanLyDanhMuc = () => {
                                     </TableCell>
                                     <TableCell align="right">
                                         <IconButton
+                                            onClick={() => handleOpenEdit(row)}
+                                            sx={{ mr: 0.5, '&:hover': { bgcolor: '#fef3c7', color: '#f59e0b' } }}
+                                        >
+                                            <EditIcon />
+                                        </IconButton>
+                                        <IconButton
                                             onClick={() => handleDelete(row.id)}
-                                            sx={{
-                                                color: '#ef4444',
-                                                '&:hover': {
-                                                    bgcolor: '#fee2e2'
-                                                }
-                                            }}
+                                            sx={{ color: '#ef4444', '&:hover': { bgcolor: '#fee2e2' } }}
                                         >
                                             <DeleteIcon />
                                         </IconButton>
@@ -208,6 +216,12 @@ const QuanLyDanhMuc = () => {
             <ModalAddCategory
                 open={openModal}
                 handleClose={handleCloseModal}
+                fetchCategories={fetchCategories}
+            />
+            <ModalEditCategory
+                open={editModal}
+                handleClose={handleCloseEdit}
+                category={selectedCategory}
                 fetchCategories={fetchCategories}
             />
         </Box>

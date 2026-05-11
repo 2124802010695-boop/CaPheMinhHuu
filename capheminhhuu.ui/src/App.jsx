@@ -4,9 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './common/components/ProtectedRoute';
 
 import UnifiedLogin from './modules/auth/UnifiedLogin';
-import AdminLogin from './modules/auth/AdminLogin';
-import StaffLogin from './modules/auth/StaffLogin';
 import ChangePassword from './modules/auth/ChangePassword';
+import QuanLyTopping from './modules/admin/pages/QuanLyTopping';
 
 import LayoutAdmin from './modules/admin/layout/LayoutAdmin';
 import AdminDashboard from './modules/admin/pages/AdminDashboard';
@@ -17,7 +16,7 @@ import QuanLyKho from './modules/admin/pages/QuanLyKho';
 import QuanLyNhanVien from './modules/admin/pages/QuanLyNhanVien';
 import QuanLyKhuVucBan from './modules/admin/pages/QuanLyKhuVucBan';
 import QuanLyCaLamViec from './modules/admin/pages/QuanLyCaLamViec';
-import SecurityDashboard from './modules/admin/pages/SecurityDashboard';
+
 
 import LayoutCashier from './modules/cashier/layout/LayoutCashier';
 import CashierPOS from './modules/cashier/pages/CashierPOS';
@@ -27,6 +26,7 @@ import OrderDetail from './modules/cashier/pages/OrderDetail';
 import ShiftOpen from './modules/cashier/pages/ShiftOpen';
 import ShiftClose from './modules/cashier/pages/ShiftClose';
 import ShiftReport from './modules/cashier/pages/ShiftReport';
+import PaymentPage from './modules/cashier/pages/PaymentPage';
 
 import KDS_Bep from './modules/kitchen/pages/KDS_Bep';
 
@@ -54,12 +54,13 @@ function App() {
                     <Route path="quanlykho" element={<QuanLyKho />} />
                     <Route path="quanlynhanvien" element={<QuanLyNhanVien />} />
                     <Route path="quanlycalamviec" element={<QuanLyCaLamViec />} />
-                    <Route path="baomat" element={<SecurityDashboard />} />
+
                     <Route path="quanlykhuvucban" element={<QuanLyKhuVucBan />} />
+                    <Route path="quanlytopping" element={<QuanLyTopping />} />
                 </Route>
 
                 <Route path="cashier" element={
-                    <ProtectedRoute allowedRoles={["Cashier"]} authKey="staffToken" userKey="staffUser" loginPath="/login">
+                    <ProtectedRoute allowedRoles={["Cashier"]} authKey="cashierToken" userKey="cashierUser" loginPath="/login">
                         <LayoutCashier />
                     </ProtectedRoute>
                 }>
@@ -68,13 +69,14 @@ function App() {
                     <Route path="tables" element={<TableManagement />} />
                     <Route path="orders" element={<OrderList />} />
                     <Route path="orders/:id" element={<OrderDetail />} />
+                    <Route path="payment" element={<PaymentPage />} />
                     <Route path="shift-open" element={<ShiftOpen />} />
                     <Route path="shift-close" element={<ShiftClose />} />
                     <Route path="shift-report" element={<ShiftReport />} />
                 </Route>
 
                 <Route path="/Bep" element={
-                    <ProtectedRoute allowedRoles={["Kitchen"]} authKey="staffToken" userKey="staffUser" loginPath="/login">
+                    <ProtectedRoute allowedRoles={["Kitchen"]} authKey="kitchenToken" userKey="kitchenUser" loginPath="/login">
                         <KDS_Bep />
                     </ProtectedRoute>
                 } />

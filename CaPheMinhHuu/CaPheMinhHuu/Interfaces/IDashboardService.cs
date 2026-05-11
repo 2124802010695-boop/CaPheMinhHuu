@@ -1,13 +1,15 @@
 using CaPheMinhHuu.DTOs.Dashboard;
-
 namespace CaPheMinhHuu.Interfaces
 {
     public interface IDashboardService
     {
-        /// <summary>
-        /// Lấy thống kê dashboard.
-        /// </summary>
-        /// <param name="chartDays">Số ngày hiển thị biểu đồ (mặc định 7, tối đa 30)</param>
         Task<DashboardStatsDto> GetStatsAsync(int chartDays = 7);
+        Task<RangeDashboardStatsDto> GetRangeStatsAsync(DateTime from, DateTime to);
+
+        // D3 — WACC per ingredient
+        Task<List<IngredientWaccDto>> GetIngredientWaccAsync(int? ingredientId = null);
+
+        // D4 — Variance report
+        Task<List<IngredientVarianceDto>> GetIngredientVarianceAsync(DateTime from, DateTime to);
     }
 }

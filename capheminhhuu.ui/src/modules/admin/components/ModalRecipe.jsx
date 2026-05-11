@@ -3,7 +3,7 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, TextField, IconButton,
-    Grid, FormControl, InputLabel, Select, MenuItem, Typography, Box, Chip, InputAdornment
+    Grid, FormControl, Select, MenuItem, Typography, Box, Chip, Tooltip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -14,13 +14,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { getRecipesByProductAPI, createRecipeAPI, deleteRecipeAPI } from '../services/recipeService';
 import { getIngredientsAPI } from '../services/ingredientService';
 
-// --- 1. LOGIC QUY ĐỔI (ĐÃ THÊM VÀO) ---
-const UNIT_CONVERSION = {
-    'kg': [ { label: 'Kilogram (kg)', value: 'kg', rate: 1 }, { label: 'Gram (g)', value: 'g', rate: 0.001 } ],
-    'g':  [ { label: 'Gram (g)', value: 'g', rate: 1 }, { label: 'Kilogram (kg)', value: 'kg', rate: 1000 } ],
-    'l':  [ { label: 'Lít (l)', value: 'l', rate: 1 }, { label: 'Mililit (ml)', value: 'ml', rate: 0.001 } ],
-    'ml': [ { label: 'Mililit (ml)', value: 'ml', rate: 1 }, { label: 'Lít (l)', value: 'l', rate: 1000 } ]
-};
+// Không dùng hardcode UNIT_CONVERSION — lấy đơn vị từ ing.units (DB)
 
 const ModalRecipe = ({ open, handleClose, product }) => {
     const [recipes, setRecipes] = useState([]);
@@ -31,14 +25,23 @@ const ModalRecipe = ({ open, handleClose, product }) => {
     const [inputQuantity, setInputQuantity] = useState('');
     
     // --- 2. STATE CHO LOGIC MỚI ---
-    const [currentUnitOptions, setCurrentUnitOptions] = useState([]); 
-    const [selectedUnitRate, setSelectedUnitRate] = useState(1);      
-    const [displayUnitLabel, setDisplayUnitLabel] = useState('');     
+    const [currentUnitOptions, setCurrentUnitOptions] = useState([]);
+    const [selectedUnitRate, setSelectedUnitRate] = useState(1);
+    const [displayUnitLabel, setDisplayUnitLabel] = useState('');
+    const [yieldFactor, setYieldFactor] = useState(1.0);
 
     useEffect(() => {
         if (open && product) {
             fetchRecipes();
             fetchInventory();
+        } else if (!open) {
+            // Reset state khi đóng modal — tránh data cũ khi mở lại cho sản phẩm khác
+            setSelectedIngId('');
+            setInputQuantity('');
+            setCurrentUnitOptions([]);
+            setSelectedUnitRate(1);
+            setDisplayUnitLabel('');
+            setYieldFactor(1.0);
         }
     }, [open, product]);
 
@@ -56,43 +59,80 @@ const ModalRecipe = ({ open, handleClose, product }) => {
         } catch (error) { console.error(error); }
     };
 
-    // --- 3. HÀM XỬ LÝ CHỌN NGUYÊN LIỆU (THÔNG MINH HƠN) ---
+    // --- 3. HÀM XỬ LÝ CHỌN NGUYÊN LIỆU — dùng ing.units từ DB ---
     const handleIngredientChange = (ingId) => {
         setSelectedIngId(ingId);
+        setInputQuantity('');
         const ing = ingredients.find(i => i.id === ingId);
-        
+
         if (ing) {
-            const baseUnit = ing.unit ? ing.unit.toLowerCase() : '';
-            // Tự động nhận diện đơn vị để hiện dropdown phù hợp
-            if (UNIT_CONVERSION[baseUnit]) {
-                setCurrentUnitOptions(UNIT_CONVERSION[baseUnit]);
-                // Mặc định chọn đơn vị nhỏ (g/ml) cho dễ nhập
-                const defaultOpt = UNIT_CONVERSION[baseUnit].find(u => u.value === 'g' || u.value === 'ml') || UNIT_CONVERSION[baseUnit][0];
+            // Ưu tiên dùng Units từ DB (đã cấu hình trong Kho)
+            if (ing.units && ing.units.length > 0) {
+                // Sắp xếp: BaseUnit lên đầu, sau đó các đơn vị nhỏ hơn
+                const sorted = [...ing.units].sort((a, b) => {
+                    if (a.isBaseUnit) return 1;  // BaseUnit xuống cuối để admin thấy đơn vị nhỏ trước
+                    if (b.isBaseUnit) return -1;
+                    return a.conversionRate - b.conversionRate; // Đơn vị nhỏ hơn lên trước
+                });
+                const options = sorted.map(u => ({
+                    label: u.unitName,
+                    value: u.unitName,
+                    rate: u.conversionRate
+                }));
+                setCurrentUnitOptions(options);
+                // Mặc định chọn đơn vị nhỏ nhất (conversionRate nhỏ nhất = đơn vị nhỏ nhất)
+                const defaultOpt = options[0];
                 setSelectedUnitRate(defaultOpt.rate);
                 setDisplayUnitLabel(defaultOpt.value);
             } else {
-                // Nếu là lon, chai, hộp -> Rate = 1
-                setCurrentUnitOptions([{ label: ing.unit, value: ing.unit, rate: 1 }]);
-                setSelectedUnitRate(1);
-                setDisplayUnitLabel(ing.unit);
+                // Fallback: không có Units cấu hình trong DB
+                // Tự động generate đơn vị nhỏ hơn dựa vào BaseUnit
+                const base = ing.baseUnit?.toLowerCase();
+                let options = [];
+                if (base === 'kg') {
+                    options = [
+                        { label: 'g', value: 'g', rate: 0.001 },
+                        { label: 'kg', value: 'kg', rate: 1 }
+                    ];
+                } else if (base === 'l' || base === 'lít' || base === 'lit') {
+                    options = [
+                        { label: 'ml', value: 'ml', rate: 0.001 },
+                        { label: 'l', value: 'l', rate: 1 }
+                    ];
+                } else {
+                    // lon, chai, hộp, cái... → rate = 1
+                    options = [{ label: ing.baseUnit, value: ing.baseUnit, rate: 1 }];
+                }
+                setCurrentUnitOptions(options);
+                // Mặc định chọn đơn vị nhỏ nhất
+                setSelectedUnitRate(options[0].rate);
+                setDisplayUnitLabel(options[0].value);
             }
         }
     };
 
     const handleAdd = async () => {
         if (!selectedIngId || !inputQuantity) return alert("Vui lòng nhập đủ thông tin!");
+        const qty = Number(inputQuantity);
+        if (isNaN(qty) || qty <= 0) return alert("Số lượng phải lớn hơn 0!");
+        const yf = Number(yieldFactor);
+        if (isNaN(yf) || yf <= 0 || yf > 1) return alert("Hệ số hao hụt phải từ 0.01 đến 1.0!");
 
-        // Tính toán số lượng thực tế lưu kho
-        const finalQuantity = Number(inputQuantity) * selectedUnitRate;
+        // Tính định mức gốc lưu vào DB (theo BaseUnit):
+        // finalQuantity = (qty × conversionRate) / yieldFactor
+        // VD: nhập 200g (rate=0.001), yield=0.8 → lưu (200×0.001)/0.8 = 0.25 kg
+        const finalQuantity = (qty * Number(selectedUnitRate)) / yf;
 
         try {
             await createRecipeAPI({
                 productId: product.id,
                 ingredientId: selectedIngId,
-                quantityRequired: finalQuantity 
+                quantityRequired: finalQuantity,
+                yieldFactor: yf
             });
             setInputQuantity('');
-            fetchRecipes(); 
+            setYieldFactor(1.0);
+            fetchRecipes();
         } catch (error) {
             alert(error.response?.data || "Lỗi thêm nguyên liệu!");
         }
@@ -158,7 +198,7 @@ const ModalRecipe = ({ open, handleClose, product }) => {
                                         <MenuItem key={ing.id} value={ing.id}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                                                 <Typography variant="body2" fontWeight="bold">{ing.name}</Typography>
-                                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>(Kho: {ing.unit})</Typography>
+                                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>(Kho: {ing.baseUnit})</Typography>
                                             </Box>
                                         </MenuItem>
                                     ))}
@@ -180,13 +220,19 @@ const ModalRecipe = ({ open, handleClose, product }) => {
                         <Grid item xs={4}>
                             <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 600, color: '#333' }}>Đơn vị:</Typography>
                             <FormControl fullWidth size="small" sx={{ bgcolor: 'white', borderRadius: 1 }}>
-                                <Select 
-                                    value={selectedUnitRate} 
+                                <Select
+                                    value={selectedUnitRate}
                                     disabled={!selectedIngId}
+                                    onChange={(e) => {
+                                        const rate = Number(e.target.value);
+                                        setSelectedUnitRate(rate);
+                                        const opt = currentUnitOptions.find(o => Number(o.rate) === rate);
+                                        if (opt) setDisplayUnitLabel(opt.value);
+                                    }}
                                 >
                                     {currentUnitOptions.length > 0 ? (
                                         currentUnitOptions.map((opt) => (
-                                            <MenuItem key={opt.value} value={opt.rate} onClick={() => setDisplayUnitLabel(opt.value)}>
+                                            <MenuItem key={opt.value} value={opt.rate}>
                                                 {opt.value}
                                             </MenuItem>
                                         ))
@@ -215,13 +261,44 @@ const ModalRecipe = ({ open, handleClose, product }) => {
                         </Grid>
                     </Grid>
 
-                    {/* DÒNG GỢI Ý TÍNH TOÁN (ĐÃ THÊM MỚI) */}
-                    {inputQuantity && selectedIngId && (
-                        <Box sx={{ mt: 2, p: 1, bgcolor: '#fff3e0', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <CalculateIcon fontSize="small" sx={{ color: '#f57c00' }}/>
-                            <Typography variant="body2" sx={{ color: '#e65100' }}>
-                                Hệ thống sẽ trừ kho: <b>{(inputQuantity * selectedUnitRate).toLocaleString()} {ingredients.find(i => i.id === selectedIngId)?.unit}</b>
+                    {/* YIELD FACTOR INPUT */}
+                    {selectedIngId && (
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Tooltip title="Tỷ lệ nguyên liệu thực sự dùng được sau sơ chế. VD: 0.8 = 80% dùng được, 20% hao hụt → hệ thống tự tính trừ kho nhiều hơn để bù hao." placement="top" arrow>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#333', cursor: 'help', textDecoration: 'underline dotted' }}>
+                                    Hệ số hao hụt (Yield):
+                                </Typography>
+                            </Tooltip>
+                            <TextField
+                                size="small" type="number" value={yieldFactor}
+                                onChange={e => setYieldFactor(e.target.value)}
+                                inputProps={{ min: 0.01, max: 1.0, step: 0.01 }}
+                                sx={{ width: 100, bgcolor: 'white' }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                                (1.0 = không hao hụt · 0.8 = hao 20%)
                             </Typography>
+                        </Box>
+                    )}
+
+                    {/* PREVIEW TÍNH TOÁN */}
+                    {inputQuantity && selectedIngId && (
+                        <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#fff3e0', borderRadius: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <CalculateIcon fontSize="small" sx={{ color: '#f57c00' }}/>
+                                <Typography variant="body2" sx={{ color: '#e65100', fontWeight: 600 }}>
+                                    Tính toán định mức:
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ color: '#555', ml: 3 }}>
+                                Nhập: <b>{Number(inputQuantity).toLocaleString()} {displayUnitLabel}</b>
+                                {' → '}Quy đổi: <b>{(Number(inputQuantity) * Number(selectedUnitRate)).toLocaleString()} {ingredients.find(i => i.id === selectedIngId)?.baseUnit}</b>
+                            </Typography>
+                            {Number(yieldFactor) < 1 && Number(yieldFactor) > 0 && (
+                                <Typography variant="body2" sx={{ color: '#d97706', ml: 3, mt: 0.5 }}>
+                                    Yield {(Number(yieldFactor) * 100).toFixed(0)}% → Thực trừ kho: <b>{((Number(inputQuantity) * Number(selectedUnitRate)) / Number(yieldFactor)).toLocaleString()} {ingredients.find(i => i.id === selectedIngId)?.baseUnit}</b>
+                                </Typography>
+                            )}
                         </Box>
                     )}
                 </Paper>
@@ -235,20 +312,38 @@ const ModalRecipe = ({ open, handleClose, product }) => {
                                 <TableCell><b>Nguyên Liệu</b></TableCell>
                                 <TableCell><b>Định Lượng (Gốc)</b></TableCell>
                                 <TableCell><b>Đơn Vị Kho</b></TableCell>
+                                <TableCell><b>Yield</b></TableCell>
+                                <TableCell><b>Ver.</b></TableCell>
                                 <TableCell align="right"><b>Xóa</b></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {recipes.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'gray' }}>Chưa cấu hình công thức nào.</TableCell>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'gray' }}>Chưa cấu hình công thức nào.</TableCell>
                                 </TableRow>
                             ) : (
                                 recipes.map((row) => (
-                                    <TableRow key={row.id}>
+                                    <TableRow key={row.id} sx={{ opacity: row.isActive ? 1 : 0.45 }}>
                                         <TableCell>{row.ingredientName}</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold', color: '#1976d2' }}>{row.quantityRequired}</TableCell>
                                         <TableCell><Chip label={row.unit} size="small" /></TableCell>
+                                        <TableCell>
+                                            <Tooltip title={`Hao hụt: ${((1 - row.yieldFactor) * 100).toFixed(0)}%`} arrow>
+                                                <Chip
+                                                    label={`${(row.yieldFactor * 100).toFixed(0)}%`}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: row.yieldFactor >= 1 ? '#f0fdf4' : '#fffbeb',
+                                                        color: row.yieldFactor >= 1 ? '#15803d' : '#b45309',
+                                                        fontWeight: 600
+                                                    }}
+                                                />
+                                            </Tooltip>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="caption" sx={{ color: '#9ca3af' }}>v{row.version}</Typography>
+                                        </TableCell>
                                         <TableCell align="right">
                                             <IconButton color="error" size="small" onClick={() => handleDelete(row.id)}><DeleteIcon fontSize="small" /></IconButton>
                                         </TableCell>

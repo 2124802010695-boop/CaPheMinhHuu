@@ -31,5 +31,17 @@ namespace CaPheMinhHuu.DTOs.Ingredient
         public DateTime? ExpiryDate { get; set; }
 
         public int? LocationId { get; set; }
+
+        // ========== PURCHASE UNIT (optional) ==========
+        /// <summary>
+        /// Cập nhật đơn vị nhập kho
+        /// </summary>
+        public int? PurchaseUnitId { get; set; }
+
+        /// <summary>
+        /// Cập nhật số lượng theo đơn vị nhập
+        /// </summary>
+        [Range(0.001, double.MaxValue, ErrorMessage = "Số lượng nhập phải > 0")]
+        public decimal? PurchaseQuantity { get; set; }
     }
 }

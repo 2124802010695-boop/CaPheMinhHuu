@@ -42,6 +42,7 @@ namespace CaPheMinhHuu.Repositories.Implements
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.Table)
+                .Include(o => o.User)
                 .Where(o => o.OrderDate.Date == date.Date)
                 .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();
@@ -64,5 +65,14 @@ namespace CaPheMinhHuu.Repositories.Implements
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.Table)
                 .FirstOrDefaultAsync(o => o.OrderCode == orderCode && !o.IsDeleted);
+        public async Task<bool> HasActiveOrdersForTableAsync(int tableId, int excludeOrderId)
+        {
+            return await _context.Orders
+                .AnyAsync(o => o.TableId == tableId
+                    && o.Id != excludeOrderId
+                    && o.Status != "Completed"
+                    && o.Status != "Cancelled"
+                    && !o.IsDeleted);
+        }
     }
 }

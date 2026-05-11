@@ -1,4 +1,4 @@
-﻿    using CaPheMinhHuu.DTOs.Recipe;
+    using CaPheMinhHuu.DTOs.Recipe;
 using CaPheMinhHuu.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +44,14 @@ namespace CaPheMinhHuu.Controllers
             var result = await _service.RemoveIngredientFromProductAsync(id);
             if (!result) return NotFound();
             return Ok(new { message = "Xóa thành công" });
+        }
+
+        // GET: api/Recipe/product/5/versions — Lịch sử phiên bản công thức
+        [HttpGet("product/{productId}/versions")]
+        public async Task<IActionResult> GetVersionHistory(int productId)
+        {
+            var result = await _service.GetVersionHistoryAsync(productId);
+            return Ok(result);
         }
     }
 }

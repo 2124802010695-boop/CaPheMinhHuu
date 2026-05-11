@@ -12,5 +12,6 @@ namespace CaPheMinhHuu.Interfaces
         Task UpdateStatusAsync(int id, string status);
         Task<IDbContextTransaction> BeginTransactionAsync();
         Task<Order?> GetByOrderCodeAsync(string orderCode);
+        Task<bool> HasActiveOrdersForTableAsync(int tableId, int excludeOrderId);
     }
 }

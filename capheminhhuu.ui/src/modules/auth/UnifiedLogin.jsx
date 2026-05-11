@@ -48,42 +48,62 @@ const UnifiedLogin = () => {
                     if (res.refreshToken) {
                         localStorage.setItem('adminRefreshToken', res.refreshToken);
                     }
-                    await registerTabAPI(tabManager.getTabId());
                     navigate('/admin/dashboard');
+                    try {
+                        await registerTabAPI(tabManager.getTabId());
+                    } catch (tabErr) {
+                        console.warn('register-tab failed:', tabErr);
+                    }
                 }
             } else {
                 res = await staffLoginAPI(identifier, password);
                 if (res && res.token) {
-                    localStorage.setItem('staffToken', res.token);
-                    localStorage.setItem('staffUser', JSON.stringify(res.user));
-                    if (res.refreshToken) {
-                        localStorage.setItem('staffRefreshToken', res.refreshToken);
-                    }
+                    const role = res.user?.role;
+                    const tKey = role === 'Kitchen' ? 'kitchenToken' : 'cashierToken';
+                    const rKey = role === 'Kitchen' ? 'kitchenRefreshToken' : 'cashierRefreshToken';
+                    const uKey = role === 'Kitchen' ? 'kitchenUser' : 'cashierUser';
+                    localStorage.setItem(tKey, res.token);
+                    localStorage.setItem(uKey, JSON.stringify(res.user));
+                    if (res.refreshToken) localStorage.setItem(rKey, res.refreshToken);
 
                     if (res.isFirstLogin) {
                         navigate('/staff/change-password');
                         return;
                     }
 
-                    const role = res.user?.role;
-
                     if (role === 'Cashier') {
                         try {
                             const shiftRes = await getCurrentShiftAPI();
                             if (shiftRes && shiftRes.id && shiftRes.status === 'Open') {
-                                await registerTabAPI(tabManager.getTabId());
                                 navigate('/cashier/pos');
+                                try {
+                                    await registerTabAPI(tabManager.getTabId());
+                                } catch (tabErr) {
+                                    console.warn('register-tab failed:', tabErr);
+                                }
                             } else {
-                                await registerTabAPI(tabManager.getTabId());
                                 navigate('/cashier/shift-open');
+                                try {
+                                    await registerTabAPI(tabManager.getTabId());
+                                } catch (tabErr) {
+                                    console.warn('register-tab failed:', tabErr);
+                                }
                             }
                         } catch {
-                            await registerTabAPI(tabManager.getTabId());
                             navigate('/cashier/shift-open');
+                            try {
+                                await registerTabAPI(tabManager.getTabId());
+                            } catch (tabErr) {
+                                console.warn('register-tab failed:', tabErr);
+                            }
                         }
                     } else if (role === 'Kitchen') {
-                        await registerTabAPI(tabManager.getTabId());
                         navigate('/Bep');
+                        try {
+                            await registerTabAPI(tabManager.getTabId());
+                        } catch (tabErr) {
+                            console.warn('register-tab failed:', tabErr);
+                        }
                     } else {
                         setError('Role không hợp lệ!');
                     }

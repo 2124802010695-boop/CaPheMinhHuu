@@ -12,5 +12,9 @@ namespace CaPheMinhHuu.DTOs.Order
         public int ProductId { get; set; }
         public int Quantity { get; set; }
         public string? Note { get; set; }
+        public string? SizeLabel { get; set; }
+        public string? SugarLevel { get; set; }
+        public string? IceLevel { get; set; }
+        public List<OrderItemToppingDto> Toppings { get; set; } = new();
     }
 }

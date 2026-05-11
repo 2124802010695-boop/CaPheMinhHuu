@@ -17,6 +17,7 @@ namespace CaPheMinhHuu.Models
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
         public string? Email { get; set; }
         public string OrderCode { get; set; } = "";
+        public bool IsPaid { get; set; } = false;
         public Payment? Payment { get; set; }
 
         public int? ShiftId { get; set; }

@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -17,12 +17,15 @@ namespace CaPheMinhHuu.Repositories.Implements
 
         public async Task<IEnumerable<InventoryBatch>> GetAllAsync()
         {
-            return await _context.InventoryBatches.ToListAsync();
+            return await _context.InventoryBatches
+                .Where(b => !b.IsDeleted)
+                .ToListAsync();
         }
 
         public async Task<InventoryBatch?> GetByIdAsync(int id)
         {
-            return await _context.InventoryBatches.FindAsync(id);
+            return await _context.InventoryBatches
+                .FirstOrDefaultAsync(b => b.Id == id && !b.IsDeleted);
         }
 
         public async Task<InventoryBatch> AddAsync(InventoryBatch batch)

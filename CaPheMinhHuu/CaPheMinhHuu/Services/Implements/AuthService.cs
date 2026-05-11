@@ -243,7 +243,38 @@ private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
             var existingToken = await _refreshTokenRepo.GetActiveByTokenAsync(refreshToken);
             if (existingToken == null) return null;
             // 2. Kiểm tra token còn active không
-            if (!existingToken.IsActive) return null;
+            if (!existingToken.IsActive)
+            {
+                // Race condition: nhiều request đồng thời dùng cùng refresh token
+                // Query thẳng token mới nhất còn active của user — không rotate thêm
+                var latestToken = await _refreshTokenRepo.GetLatestActiveByUserIdAsync(existingToken.UserId);
+                if (latestToken == null) return null;
+
+                // Generate access token mới từ latestToken, return luôn
+                // KHÔNG revoke latestToken, KHÔNG rotate — tránh race condition tiếp theo
+                int? shiftIdFallback = null;
+                if (latestToken.User.Role == "Cashier" || latestToken.User.Role == "Kitchen")
+                {
+                    var openShift = await _shiftRepository.GetOpenShiftByUserAsync(latestToken.User.Id);
+                    if (openShift != null)
+                        shiftIdFallback = openShift.Id;
+                }
+                var fallbackAccessToken = _jwtService.GenerateAccessToken(latestToken.User, shiftIdFallback);
+                return new LoginResponse
+                {
+                    Success = true,
+                    Token = fallbackAccessToken,
+                    RefreshToken = latestToken.Token,
+                    User = new UserInfo
+                    {
+                        Id = latestToken.User.Id,
+                        Username = latestToken.User.Username,
+                        FullName = latestToken.User.FullName,
+                        Role = latestToken.User.Role,
+                        Avatar = latestToken.User.Avatar
+                    }
+                };
+            }
             // 3. Thu hồi token cũ
             existingToken.RevokedAt = DateTime.UtcNow;
             existingToken.RevokedByIp = ipAddress;
@@ -252,7 +283,14 @@ private RefreshToken GenerateRefreshToken(int userId, string? ipAddress)
             existingToken.ReplacedByToken = newRefreshToken.Token;
             await _refreshTokenRepo.AddAsync(newRefreshToken);
             // 5. Tạo Access Token mới
-            var newAccessToken = _jwtService.GenerateAccessToken(existingToken.User);
+            int? shiftId = null;
+            if (existingToken.User.Role == "Cashier" || existingToken.User.Role == "Kitchen")
+            {
+                var openShift = await _shiftRepository.GetOpenShiftByUserAsync(existingToken.User.Id);
+                if (openShift != null)
+                    shiftId = openShift.Id;
+            }
+            var newAccessToken = _jwtService.GenerateAccessToken(existingToken.User, shiftId);
             await _refreshTokenRepo.SaveChangesAsync();
             // 6. Trả response
             return new LoginResponse

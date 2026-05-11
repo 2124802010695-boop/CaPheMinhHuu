@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Ingredient;
+using CaPheMinhHuu.DTOs.Ingredient;
 using CaPheMinhHuu.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -60,6 +60,43 @@ namespace CaPheMinhHuu.Controllers
             return Ok(new { message = "Xóa thành công" });
         }
 
+        // ===== UNIT MANAGEMENT =====
+
+        // POST: api/Ingredient/5/units (Thêm đơn vị quy đổi)
+        [HttpPost("{ingredientId}/units")]
+        public async Task<IActionResult> AddUnit(int ingredientId, [FromBody] AddIngredientUnitDto dto)
+        {
+            try
+            {
+                var result = await _service.AddUnitAsync(ingredientId, dto);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // DELETE: api/Ingredient/5/units/3 (Xóa đơn vị quy đổi)
+        [HttpDelete("{ingredientId}/units/{unitId}")]
+        public async Task<IActionResult> DeleteUnit(int ingredientId, int unitId)
+        {
+            try
+            {
+                var result = await _service.DeleteUnitAsync(ingredientId, unitId);
+                if (!result) return NotFound(new { message = "Không tìm thấy đơn vị quy đổi" });
+                return Ok(new { message = "Xóa đơn vị thành công" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // ===== BATCH MANAGEMENT =====
 
         // POST: api/Ingredient/5/batch (Thêm lô hàng mới)
@@ -87,6 +124,22 @@ namespace CaPheMinhHuu.Controllers
             var result = await _service.UpdateBatchAsync(ingredientId, batchId, dto);
             if (result == null) return NotFound("Không tìm thấy lô hàng");
             return Ok(result);
+        }
+
+        // PUT: api/Ingredient/5/batch/3/dispose (Xuất hủy lô hàng hết hạn)
+        [HttpPut("{ingredientId}/batch/{batchId}/dispose")]
+        public async Task<IActionResult> DisposeBatch(int ingredientId, int batchId)
+        {
+            try
+            {
+                var result = await _service.DisposeBatchAsync(ingredientId, batchId);
+                if (result == null) return NotFound(new { message = "Không tìm thấy lô hàng" });
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         // DELETE: api/Ingredient/5/batch/3 (Xóa lô hàng)

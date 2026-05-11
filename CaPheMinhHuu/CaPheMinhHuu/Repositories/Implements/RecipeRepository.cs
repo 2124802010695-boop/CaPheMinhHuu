@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +26,12 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             await _context.Recipes.AddAsync(recipe);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task AddWithoutSaveAsync(Recipe recipe)
+        {
+            await _context.Recipes.AddAsync(recipe);
+            // Không SaveChanges — caller chịu trách nhiệm
         }
 
         public async Task<bool> DeleteAsync(int id)

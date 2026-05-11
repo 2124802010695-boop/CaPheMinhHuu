@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Data;
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +15,9 @@ namespace CaPheMinhHuu.Repositories.Implements
             return await _context.Ingredients
                 .Where(i => !i.IsDeleted)
                 .Include(i => i.IngredientCategory)
-                .Include(i => i.Units)                                  // MỚI
+                .Include(i => i.Units.Where(u => !u.IsDeleted))         // MỚI
                 .Include(i => i.Batches.Where(b => !b.IsDeleted))       // MỚI: Filtered Include
+                    .ThenInclude(b => b.PurchaseUnit)                   // Load đơn vị nhập kho
                 .ToListAsync();
         }
 
@@ -24,9 +25,10 @@ namespace CaPheMinhHuu.Repositories.Implements
         {
             return await _context.Ingredients
                 .Include(i => i.IngredientCategory)
-                .Include(i => i.Units)                                  // MỚI
-                .Include(i => i.Batches.Where(b => !b.IsDeleted))       // MỚI: Filtered Include
-                .FirstOrDefaultAsync(i => i.Id == id);
+                .Include(i => i.Units.Where(u => !u.IsDeleted))
+                .Include(i => i.Batches.Where(b => !b.IsDeleted))
+                    .ThenInclude(b => b.PurchaseUnit)                   // Load đơn vị nhập kho
+                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
         }
 
         public async Task<Ingredient> AddAsync(Ingredient ingredient)

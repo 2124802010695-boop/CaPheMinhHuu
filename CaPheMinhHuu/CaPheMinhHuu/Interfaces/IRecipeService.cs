@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.DTOs.Recipe;
+using CaPheMinhHuu.DTOs.Recipe;
 
 namespace CaPheMinhHuu.Interfaces
 {
@@ -7,5 +7,6 @@ namespace CaPheMinhHuu.Interfaces
         Task<IEnumerable<RecipeViewDto>> GetByProductIdAsync(int productId);
         Task<RecipeViewDto> AddIngredientToProductAsync(RecipeCreateDto dto);
         Task<bool> RemoveIngredientFromProductAsync(int recipeId);
+        Task<IEnumerable<RecipeVersionDto>> GetVersionHistoryAsync(int productId);
     }
 }

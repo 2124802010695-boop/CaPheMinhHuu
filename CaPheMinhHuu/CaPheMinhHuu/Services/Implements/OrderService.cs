@@ -1,10 +1,12 @@
 
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.DTOs.Ingredient;
 using CaPheMinhHuu.DTOs.Order;
 using CaPheMinhHuu.Hubs;
 using CaPheMinhHuu.Interfaces;
 using CaPheMinhHuu.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace CaPheMinhHuu.Services.Implements
 
@@ -17,6 +19,9 @@ namespace CaPheMinhHuu.Services.Implements
         private readonly IHubContext<AppHub> _hubContext;
         private readonly IIngredientService _ingredientService;
         private readonly ITableRepository _tableRepository;
+        private readonly IEmailService _emailService;
+        private readonly ApplicationDbContext _context;
+        private readonly IRecipeRepository _recipeRepo;
 
         private readonly ILogger<OrderService> _logger;
         public OrderService(
@@ -25,6 +30,9 @@ namespace CaPheMinhHuu.Services.Implements
             IHubContext<AppHub> hubContext,
             IIngredientService ingredientService,
             ITableRepository tableRepository,
+            IEmailService emailService,
+            ApplicationDbContext context,
+            IRecipeRepository recipeRepo,
             ILogger<OrderService> logger)
         {
             _orderRepository = orderRepository;
@@ -32,10 +40,14 @@ namespace CaPheMinhHuu.Services.Implements
             _hubContext = hubContext;
             _ingredientService = ingredientService;
             _tableRepository = tableRepository;
+            _emailService = emailService;
+            _context = context;
+            _recipeRepo = recipeRepo;
             _logger = logger;
         }
         public async Task<OrderViewDto> CreateOrderAsync(OrderCreateDto dto, int userId, int? shiftId = null)
         {
+            // 1. Kiểm tra stock nguyên liệu (base product)
             var stockCheck = await _ingredientService.CheckStockForOrderAsync(dto.Items);
             if (!stockCheck.IsAvailable)
             {
@@ -43,47 +55,157 @@ namespace CaPheMinhHuu.Services.Implements
                     s => $"{s.IngredientName}: cần {s.Required}, còn {s.Available}"));
                 throw new InvalidOperationException($"Không đủ nguyên liệu: {info}");
             }
+
+            // 2. Tạo Order header
             var order = new Order
             {
-                UserId = userId,
-                CustomerName = dto.CustomerName,
-                Phone = dto.Phone,
-                Address = dto.Address ?? "",
+                UserId        = userId,
+                CustomerName  = dto.CustomerName,
+                Phone         = dto.Phone,
+                Email         = dto.Email,
+                Address       = dto.Address ?? "",
                 PaymentMethod = dto.PaymentMethod,
-                TableId = dto.TableId,
-                ShiftId = shiftId,
-                OrderDate = DateTime.Now,
-                Status = "Pending",
-                OrderCode = $"MH-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}"
+                TableId       = dto.TableId,
+                ShiftId       = shiftId,
+                OrderDate     = DateTime.Now,
+                Status        = "Pending",
+                OrderCode     = $"MH-{DateTime.Now:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}"
             };
+
             decimal totalAmount = 0;
             var orderItems = new List<OrderItem>();
-            foreach (var item in dto.Items)
+
+            foreach (var itemDto in dto.Items)
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                // 3. Lấy product
+                var product = await _productRepository.GetByIdAsync(itemDto.ProductId);
                 if (product == null)
-                    throw new InvalidOperationException($"Sản phẩm ID {item.ProductId} không tồn tại");
+                    throw new InvalidOperationException($"Sản phẩm ID {itemDto.ProductId} không tồn tại");
+
+                // 4. Xử lý Size — query ProductSizes
+                decimal sizeExtraPrice = 0;
+                string? sizeLabel = null;
+
+                if (!string.IsNullOrEmpty(itemDto.SizeLabel))
+                {
+                    var productSize = await _context.ProductSizes
+                        .FirstOrDefaultAsync(ps => ps.ProductId == itemDto.ProductId
+                            && ps.Label == itemDto.SizeLabel
+                            && ps.IsActive
+                            && !ps.IsDeleted);
+
+                    if (productSize != null)
+                    {
+                        sizeExtraPrice        = productSize.PriceExtra;
+                        sizeLabel             = productSize.Label;
+                        itemDto.SizeMultiplier = productSize.RecipeMultiplier;
+                    }
+                }
+
+                // 5. Xử lý Toppings — query Toppings
+                decimal toppingTotal = 0;
+                var toppingEntities = new List<OrderItemTopping>();
+
+                if (itemDto.Toppings != null && itemDto.Toppings.Any())
+                {
+                    foreach (var toppingDto in itemDto.Toppings)
+                    {
+                        var topping = await _context.Toppings
+                            .FirstOrDefaultAsync(t => t.Id == toppingDto.ToppingId
+                                && t.IsActive
+                                && !t.IsDeleted);
+
+                        if (topping == null)
+                            throw new InvalidOperationException($"Topping ID {toppingDto.ToppingId} không tồn tại");
+
+                        var actualToppingQty = toppingDto.Quantity * itemDto.Quantity;
+                        var lineTotal = topping.Price * actualToppingQty;
+                        toppingTotal += lineTotal;
+
+                        toppingEntities.Add(new OrderItemTopping
+                        {
+                            ToppingId   = topping.Id,
+                            ToppingName = topping.Name,
+                            Price       = topping.Price,
+                            Quantity    = actualToppingQty,
+                            LineTotal   = lineTotal
+                        });
+                    }
+                }
+
+                // 6. Tạo BOM Snapshot — lưu định mức nguyên liệu tại thời điểm order
+                var recipes = await _recipeRepo.GetByProductIdAsync(itemDto.ProductId);
+                var ingredientSnapshots = recipes
+                    .Where(r => r.IsActive && !r.IsDeleted)
+                    .Select(r => new OrderItemIngredientSnapshot
+                    {
+                        IngredientId     = r.IngredientId,
+                        IngredientName   = r.Ingredient?.Name ?? "",
+                        BaseUnit         = r.Ingredient?.BaseUnit ?? "",
+                        QuantityRequired = r.QuantityRequired,
+                        YieldFactor      = r.YieldFactor,
+                        RecipeVersion    = r.Version,
+                        SizeMultiplier   = itemDto.SizeMultiplier,
+                        OrderQuantity    = itemDto.Quantity,
+                        ActualDeducted   = (r.QuantityRequired / r.YieldFactor) * itemDto.SizeMultiplier * itemDto.Quantity
+                    }).ToList();
+
+                // 7. Tạo OrderItem với đầy đủ thông tin + BOM Snapshot
                 var orderItem = new OrderItem
                 {
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity,
-                    PriceAtOrder = product.Price,
-                    Note = item.Note
+                    ProductId           = itemDto.ProductId,
+                    Quantity            = itemDto.Quantity,
+                    PriceAtOrder        = product.Price,
+                    SizeExtraPrice      = sizeExtraPrice,
+                    SizeMultiplier      = itemDto.SizeMultiplier,
+                    SizeLabel           = sizeLabel,
+                    SugarLevel          = itemDto.SugarLevel,
+                    IceLevel            = itemDto.IceLevel,
+                    Note                = itemDto.Note,
+                    ToppingTotal        = toppingTotal,
+                    Toppings            = toppingEntities,
+                    IngredientSnapshots = ingredientSnapshots
                 };
+
+                // SubtotalFull = (PriceAtOrder + SizeExtraPrice) × Quantity + ToppingTotal
+                var itemSubtotal = (product.Price + sizeExtraPrice) * itemDto.Quantity + toppingTotal;
+                totalAmount += itemSubtotal;
+
                 orderItems.Add(orderItem);
-                totalAmount += product.Price * item.Quantity;
             }
-            order.OrderItems = orderItems;
+
+            order.OrderItems  = orderItems;
             order.TotalAmount = totalAmount;
+
+            // 7. Lưu Order + OrderItems + OrderItemToppings (cascade)
             var createdOrder = await _orderRepository.CreateAsync(order);
+
+            // 8. Cập nhật trạng thái bàn
             if (dto.TableId.HasValue)
                 await _tableRepository.UpdateStatusAsync(dto.TableId.Value, "Occupied");
-            await _ingredientService.DeductStockForOrderAsync(dto.Items);
-            // Lấy OrderViewDto đầy đủ để broadcast (có items, productName...)
+
+            // 9. Trừ kho nguyên liệu base + audit log (atomic)
+            await _ingredientService.DeductStockForOrderAsync(
+                createdOrder.OrderItems.ToList(),
+                createdOrder.OrderCode,
+                createdOrder.OrderDate);
+
+            // 10. Trừ kho topping
+            var allToppingDtos = dto.Items
+                .Where(i => i.Toppings != null)
+                .SelectMany(i => i.Toppings!.Select(t => new OrderItemToppingDto
+                {
+                    ToppingId = t.ToppingId,
+                    Quantity  = t.Quantity * i.Quantity
+                }))
+                .ToList();
+            if (allToppingDtos.Any())
+                await _ingredientService.DeductStockForToppingsAsync(allToppingDtos);
+
+            // 11. Broadcast + return
             var orderViewDto = await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
             _logger.LogInformation("Đơn hàng #{OrderId} đã tạo — {ItemCount} sản phẩm, tổng {Total:N0}đ",
                 orderViewDto.Id, orderViewDto.Items?.Count ?? 0, orderViewDto.TotalAmount);
-            // Broadcast DTO (không broadcast raw entity) để KDS nhận đầy đủ thông tin
             await _hubContext.Clients.All.SendAsync("ReceiveNewOrder", orderViewDto);
             return orderViewDto;
         }
@@ -103,14 +225,29 @@ namespace CaPheMinhHuu.Services.Implements
                 TableId = order.TableId,
                 TableName = order.Table?.Number.ToString(),
                 OrderCode = order.OrderCode,
+                Email = order.Email,
+                CashierName = order.User?.FullName,
                 Items = order.OrderItems.Select(oi => new OrderItemViewDto
                 {
                     ProductId = oi.ProductId,
                     ProductName = oi.Product.Name,
                     Quantity = oi.Quantity,
                     PriceAtOrder = oi.PriceAtOrder,
-                    Subtotal = oi.PriceAtOrder * oi.Quantity,
-                    Note = oi.Note
+                    Note = oi.Note,
+                    SizeLabel = oi.SizeLabel,
+                    SizeExtraPrice = oi.SizeExtraPrice,
+                    SugarLevel = oi.SugarLevel,
+                    IceLevel = oi.IceLevel,
+                    ToppingTotal = oi.ToppingTotal,
+                    ImageUrl = oi.Product?.ImageUrl,
+                    Toppings = oi.Toppings?.Select(t => new OrderItemToppingViewDto
+                    {
+                        ToppingId = t.ToppingId,
+                        ToppingName = t.ToppingName,
+                        Price = t.Price,
+                        Quantity = t.Quantity,
+                        LineTotal = t.LineTotal
+                    }).ToList() ?? new List<OrderItemToppingViewDto>()
                 }).ToList()
             };
         }
@@ -129,14 +266,30 @@ namespace CaPheMinhHuu.Services.Implements
                 TableId = o.TableId,
                 TableName = o.Table?.Number.ToString(),
                 OrderCode = o.OrderCode,
+                Email      = o.Email,
+                CashierName = o.User?.FullName,
+                IsPaid     = o.IsPaid,
                 Items = o.OrderItems?.Select(oi => new OrderItemViewDto
                 {
                     ProductId = oi.ProductId,
                     ProductName = oi.Product?.Name ?? "N/A",
                     Quantity = oi.Quantity,
                     PriceAtOrder = oi.PriceAtOrder,
-                    Subtotal = oi.PriceAtOrder * oi.Quantity,
-                    Note = oi.Note
+                    Note = oi.Note,
+                    SizeLabel = oi.SizeLabel,
+                    SizeExtraPrice = oi.SizeExtraPrice,
+                    SugarLevel = oi.SugarLevel,
+                    IceLevel = oi.IceLevel,
+                    ToppingTotal = oi.ToppingTotal,
+                    ImageUrl = oi.Product?.ImageUrl,
+                    Toppings = oi.Toppings?.Select(t => new OrderItemToppingViewDto
+                    {
+                        ToppingId = t.ToppingId,
+                        ToppingName = t.ToppingName,
+                        Price = t.Price,
+                        Quantity = t.Quantity,
+                        LineTotal = t.LineTotal
+                    }).ToList() ?? new List<OrderItemToppingViewDto>()
                 }).ToList() ?? new List<OrderItemViewDto>()
             }).ToList();
         }
@@ -152,14 +305,30 @@ namespace CaPheMinhHuu.Services.Implements
             TableId       = order.TableId,
             TableName     = order.Table?.Number.ToString(),
             OrderCode     = order.OrderCode,
+            Email         = order.Email,
+            CashierName   = order.User?.FullName,
+            IsPaid        = order.IsPaid,
             Items         = order.OrderItems?.Select(oi => new OrderItemViewDto
             {
                 ProductId    = oi.ProductId,
                 ProductName  = oi.Product?.Name ?? "N/A",
                 Quantity     = oi.Quantity,
                 PriceAtOrder = oi.PriceAtOrder,
-                Subtotal     = oi.PriceAtOrder * oi.Quantity,
-                Note         = oi.Note
+                Note         = oi.Note,
+                SizeLabel      = oi.SizeLabel,
+                SizeExtraPrice = oi.SizeExtraPrice,
+                SugarLevel     = oi.SugarLevel,
+                IceLevel       = oi.IceLevel,
+                ToppingTotal   = oi.ToppingTotal,
+                ImageUrl       = oi.Product?.ImageUrl,
+                Toppings       = oi.Toppings?.Select(t => new OrderItemToppingViewDto
+                {
+                    ToppingId   = t.ToppingId,
+                    ToppingName = t.ToppingName,
+                    Price       = t.Price,
+                    Quantity    = t.Quantity,
+                    LineTotal   = t.LineTotal
+                }).ToList() ?? new List<OrderItemToppingViewDto>()
             }).ToList() ?? new List<OrderItemViewDto>()
         };
 
@@ -190,6 +359,12 @@ namespace CaPheMinhHuu.Services.Implements
                     await _orderRepository.UpdateStatusAsync(id, newStatus);
                     // Truyền OrderItems trực tiếp — order đã load sẵn ở bước 1
                     await _ingredientService.RestoreStockForOrderAsync(order.OrderItems.ToList());
+                    // Hoàn kho topping
+                    var allToppings = order.OrderItems
+                        .SelectMany(oi => oi.Toppings ?? new List<OrderItemTopping>())
+                        .ToList();
+                    if (allToppings.Any())
+                        await _ingredientService.RestoreStockForToppingsAsync(allToppings);
                     await tx.CommitAsync();
                 }
                 catch
@@ -206,9 +381,44 @@ namespace CaPheMinhHuu.Services.Implements
             if (newStatus == "Completed" || newStatus == "Cancelled")
             {
                 if (order.TableId.HasValue)
-                    await _tableRepository.UpdateStatusAsync(order.TableId.Value, "Empty");
+                {
+                    var hasActive = await _orderRepository.HasActiveOrdersForTableAsync(
+                        order.TableId.Value, order.Id);
+                    if (!hasActive)
+                        await _tableRepository.UpdateStatusAsync(order.TableId.Value, "Empty");
+                }
             }
             _logger.LogInformation("Đơn hàng #{OrderId} chuyển trạng thái → {Status}", id, newStatus);
+
+            if (newStatus == "Completed" && !string.IsNullOrEmpty(order.Email))
+            {
+                try
+                {
+                    var emailDto = new CaPheMinhHuu.DTOs.Email.OrderEmailDto
+                    {
+                        OrderCode = order.OrderCode,
+                        CustomerName = order.CustomerName ?? "Quý khách",
+                        TableNumber = order.TableId.HasValue ? $"Bàn {order.Table?.Number}" : "Mang đi",
+                        PaymentMethod = order.PaymentMethod,
+                        TotalAmount = order.TotalAmount,
+                        OrderDate = order.OrderDate,
+                        Items = order.OrderItems.Select(oi => new CaPheMinhHuu.DTOs.Email.OrderItemInfo
+                        {
+                            ProductName = oi.Product?.Name ?? "N/A",
+                            Quantity = oi.Quantity,
+                            Price = oi.PriceAtOrder
+                        }).ToList()
+                    };
+                    await _emailService.SendOrderConfirmationAsync(order.Email, emailDto);
+                    _logger.LogInformation("Bill email sent to {Email} for order #{OrderCode}", order.Email, order.OrderCode);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send bill email for order #{OrderCode}", order.OrderCode);
+                    // Không throw — email failure không block luồng chính
+                }
+            }
+
             await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", id, newStatus);
         }
 
@@ -217,9 +427,13 @@ namespace CaPheMinhHuu.Services.Implements
             // Convert GuestOrderItemDto → OrderItemDto để reuse stock check
             var itemDtos = dto.Items.Select(i => new OrderItemDto
             {
-                ProductId = i.ProductId,
-                Quantity  = i.Quantity,
-                Note      = i.Note
+                ProductId  = i.ProductId,
+                Quantity   = i.Quantity,
+                Note       = i.Note,
+                SizeLabel  = i.SizeLabel,
+                SugarLevel = i.SugarLevel,
+                IceLevel   = i.IceLevel,
+                Toppings   = i.Toppings ?? new()
             }).ToList();
 
             var stockCheck = await _ingredientService.CheckStockForOrderAsync(itemDtos);
@@ -234,13 +448,14 @@ namespace CaPheMinhHuu.Services.Implements
             {
                 UserId        = null,
                 CustomerName  = dto.Email ?? "Khách",
+                Email         = dto.Email,
                 Phone         = null,
                 Address       = "",
                 PaymentMethod = "Cash",
                 TableId       = dto.TableId,
                 OrderDate     = DateTime.Now,
                 Status        = "Pending",
-                OrderCode     = $"MH-{DateTime.Now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}"
+                OrderCode     = $"MH-{DateTime.Now:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}"
             };
 
             decimal totalAmount = 0;
@@ -250,14 +465,86 @@ namespace CaPheMinhHuu.Services.Implements
                 var product = await _productRepository.GetByIdAsync(item.ProductId);
                 if (product == null)
                     throw new InvalidOperationException($"Sản phẩm ID {item.ProductId} không tồn tại");
+
+                // Resolve Size → SizeMultiplier + SizeExtraPrice
+                decimal sizeExtraPrice = 0;
+                string? sizeLabel = null;
+                if (!string.IsNullOrEmpty(item.SizeLabel))
+                {
+                    var productSize = await _context.ProductSizes
+                        .FirstOrDefaultAsync(ps => ps.ProductId == item.ProductId
+                            && ps.Label == item.SizeLabel
+                            && ps.IsActive
+                            && !ps.IsDeleted);
+                    if (productSize != null)
+                    {
+                        sizeExtraPrice      = productSize.PriceExtra;
+                        sizeLabel           = productSize.Label;
+                        item.SizeMultiplier = productSize.RecipeMultiplier;
+                    }
+                }
+
+                // Resolve Toppings → toppingEntities + toppingTotal
+                decimal toppingTotal = 0;
+                var toppingEntities = new List<OrderItemTopping>();
+                if (item.Toppings != null && item.Toppings.Any())
+                {
+                    foreach (var toppingDto in item.Toppings)
+                    {
+                        var topping = await _context.Toppings
+                            .FirstOrDefaultAsync(t => t.Id == toppingDto.ToppingId
+                                && t.IsActive && !t.IsDeleted);
+                        if (topping == null)
+                            throw new InvalidOperationException($"Topping ID {toppingDto.ToppingId} không tồn tại");
+                        var actualToppingQty = toppingDto.Quantity * item.Quantity;
+                        var lineTotal = topping.Price * actualToppingQty;
+                        toppingTotal += lineTotal;
+                        toppingEntities.Add(new OrderItemTopping
+                        {
+                            ToppingId   = topping.Id,
+                            ToppingName = topping.Name,
+                            Price       = topping.Price,
+                            Quantity    = actualToppingQty,
+                            LineTotal   = lineTotal
+                        });
+                    }
+                }
+
+                // BOM Snapshot cho guest order
+                var guestRecipes = await _recipeRepo.GetByProductIdAsync(item.ProductId);
+                var guestIngredientSnapshots = guestRecipes
+                    .Where(r => r.IsActive && !r.IsDeleted)
+                    .Select(r => new OrderItemIngredientSnapshot
+                    {
+                        IngredientId     = r.IngredientId,
+                        IngredientName   = r.Ingredient?.Name ?? "",
+                        BaseUnit         = r.Ingredient?.BaseUnit ?? "",
+                        QuantityRequired = r.QuantityRequired,
+                        YieldFactor      = r.YieldFactor,
+                        RecipeVersion    = r.Version,
+                        SizeMultiplier   = item.SizeMultiplier,
+                        OrderQuantity    = item.Quantity,
+                        ActualDeducted   = (r.QuantityRequired / r.YieldFactor) * item.SizeMultiplier * item.Quantity
+                    }).ToList();
+
                 orderItems.Add(new OrderItem
                 {
-                    ProductId    = item.ProductId,
-                    Quantity     = item.Quantity,
-                    PriceAtOrder = product.Price,
-                    Note         = item.Note
+                    ProductId           = item.ProductId,
+                    Quantity            = item.Quantity,
+                    PriceAtOrder        = product.Price,
+                    SizeExtraPrice      = sizeExtraPrice,
+                    SizeMultiplier      = item.SizeMultiplier,
+                    SizeLabel           = sizeLabel,
+                    SugarLevel          = item.SugarLevel,
+                    IceLevel            = item.IceLevel,
+                    Note                = item.Note,
+                    ToppingTotal        = toppingTotal,
+                    Toppings            = toppingEntities,
+                    IngredientSnapshots = guestIngredientSnapshots
                 });
-                totalAmount += product.Price * item.Quantity;
+
+                // SubtotalFull = (PriceAtOrder + SizeExtraPrice) × Quantity + ToppingTotal
+                totalAmount += (product.Price + sizeExtraPrice) * item.Quantity + toppingTotal;
             }
 
             order.OrderItems  = orderItems;
@@ -268,7 +555,22 @@ namespace CaPheMinhHuu.Services.Implements
             if (dto.TableId.HasValue)
                 await _tableRepository.UpdateStatusAsync(dto.TableId.Value, "Occupied");
 
-            await _ingredientService.DeductStockForOrderAsync(itemDtos);
+            await _ingredientService.DeductStockForOrderAsync(
+                createdOrder.OrderItems.ToList(),
+                createdOrder.OrderCode,
+                createdOrder.OrderDate);
+
+            // Trừ kho topping
+            var allToppingDtos = itemDtos
+                .Where(i => i.Toppings != null && i.Toppings.Any())
+                .SelectMany(i => i.Toppings!.Select(t => new OrderItemToppingDto
+                {
+                    ToppingId = t.ToppingId,
+                    Quantity  = t.Quantity * i.Quantity
+                }))
+                .ToList();
+            if (allToppingDtos.Any())
+                await _ingredientService.DeductStockForToppingsAsync(allToppingDtos);
 
             var orderViewDto = await GetOrderByIdAsync(createdOrder.Id) ?? new OrderViewDto();
 
@@ -284,6 +586,22 @@ namespace CaPheMinhHuu.Services.Implements
         {
             var order = await _orderRepository.GetByOrderCodeAsync(orderCode);
             return order == null ? null : MapToViewDto(order);
+        }
+        public async Task MarkAsPaidAsync(int id)
+        {
+            var order = await _orderRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Không tìm thấy đơn hàng #{id}");
+
+            if (order.IsPaid)
+                throw new InvalidOperationException($"Đơn hàng #{id} đã được thanh toán trước đó");
+
+            order.IsPaid = true;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Đơn hàng #{OrderId} đã được đánh dấu thanh toán", id);
+
+            await _hubContext.Clients.Groups("Cashier", "Admin")
+                .SendAsync("OrderPaid", id);
         }
     }
 }

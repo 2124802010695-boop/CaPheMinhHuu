@@ -7,6 +7,7 @@ namespace CaPheMinhHuu.Interfaces
         Task<OrderViewDto?> GetOrderByIdAsync(int id);
         Task<List<OrderViewDto>> GetTodayOrdersAsync();
         Task UpdateOrderStatusAsync(int id, string status);
+        Task MarkAsPaidAsync(int id);
         Task<OrderViewDto> CreateGuestOrderAsync(GuestOrderCreateDto dto);
         Task<OrderViewDto?> GetByOrderCodeAsync(string orderCode);
     }

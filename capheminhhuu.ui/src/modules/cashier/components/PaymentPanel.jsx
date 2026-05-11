@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { updateOrderStatus, createVnPayUrl } from '../services/orderService';
+import { updateOrderStatus, markAsPaid, createVnPayUrl } from '../services/orderService';
+import { onOrderStatusUpdated, onOrderPaid } from '../../../common/utils/signalRConnection';
 
 export default function PaymentPanel({ order, paymentMethod, onClose, onConfirmed }) {
     const [loadingVnPay, setLoadingVnPay] = useState(false);
@@ -7,6 +8,7 @@ export default function PaymentPanel({ order, paymentMethod, onClose, onConfirme
     const [cashReceived, setCashReceived] = useState('');
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [confirmed, setConfirmed] = useState(false);
 
     useEffect(() => {
         if (paymentMethod === 'VNPay' && order?.orderCode) {
@@ -27,13 +29,27 @@ export default function PaymentPanel({ order, paymentMethod, onClose, onConfirme
         }
     }, [paymentMethod, order?.orderCode]);
 
+    useEffect(() => {
+        if (paymentMethod !== 'VNPay') return;
+        const cleanup = onOrderPaid((orderId) => {
+            if (orderId === order.id && !confirmed) {
+                setConfirmed(true);
+                onConfirmed();
+            }
+        });
+        return cleanup;
+    }, [order.id, paymentMethod, confirmed]);
+
     const handleConfirm = async () => {
+        if (confirmed) return;
+        setConfirmed(true);
         setSubmitting(true);
         setError(null);
         try {
-            await updateOrderStatus(order.id, "Completed");
+            await markAsPaid(order.id);
             onConfirmed();
         } catch (err) {
+            setConfirmed(false);
             setError('Lỗi cập nhật trạng thái: ' + (err.response?.data?.message || err.message));
         }
         setSubmitting(false);
@@ -70,6 +86,13 @@ export default function PaymentPanel({ order, paymentMethod, onClose, onConfirme
                 </div>
             </div>
 
+            <div className="px-4 py-2 bg-yellow-900/20 border-b border-yellow-700/20 flex items-start gap-2">
+                <span className="material-symbols-outlined text-yellow-500 text-base mt-0.5">warning</span>
+                <p className="text-xs text-yellow-400">
+                    Đơn hàng đã được tạo. Nếu huỷ, vào <strong>Danh sách đơn</strong> để xử lý đơn treo.
+                </p>
+            </div>
+
             {/* Payment Method Specifics */}
             <div className="p-4 bg-[#131313] flex-1">
                 {paymentMethod === 'Cash' && (
@@ -96,7 +119,7 @@ export default function PaymentPanel({ order, paymentMethod, onClose, onConfirme
                 {(paymentMethod === 'Transfer' || paymentMethod === 'Card') && (
                     <div className="flex flex-col items-center justify-center py-6 text-[#86948a]">
                         <span className="material-symbols-outlined text-5xl mb-2 text-[#4edea3]">credit_card</span>
-                        <p className="text-center font-medium">Vui lòng nhận thanh toán qua máy POS<br/>hoặc kiểm tra app Ngân hàng</p>
+                        <p className="text-center font-medium">Vui lòng nhận thanh toán qua máy POS<br />hoặc kiểm tra app Ngân hàng</p>
                     </div>
                 )}
 
@@ -107,9 +130,9 @@ export default function PaymentPanel({ order, paymentMethod, onClose, onConfirme
                         ) : vnPayUrl ? (
                             <>
                                 <span className="material-symbols-outlined text-5xl text-[#10b981]">qr_code_2</span>
-                                <a 
-                                    href={vnPayUrl} 
-                                    target="_blank" 
+                                <a
+                                    href={vnPayUrl}
+                                    target="_blank"
                                     rel="noreferrer"
                                     className="text-[#4edea3] hover:text-[#10b981] font-bold underline transition-colors text-center"
                                 >
@@ -117,6 +140,9 @@ export default function PaymentPanel({ order, paymentMethod, onClose, onConfirme
                                 </a>
                                 <p className="text-xs text-[#86948a] text-center mt-2">
                                     Hoặc cho khách hàng quét mã trên màn hình phụ
+                                </p>
+                                <p className="text-xs text-[#86948a] mt-3 text-center animate-pulse">
+                                    Đang chờ xác nhận thanh toán...
                                 </p>
                             </>
                         ) : error ? (

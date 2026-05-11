@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CaPheMinhHuu.DTOs.Ingredient
 {
@@ -81,5 +81,20 @@ namespace CaPheMinhHuu.DTOs.Ingredient
         public DateTime? ExpiryDate { get; set; }
 
         public int? LocationId { get; set; } // Vị trí lưu trữ (nếu có)
+
+        // ========== PURCHASE UNIT (optional) ==========
+        /// <summary>
+        /// ID đơn vị nhập kho (VD: id của "thùng", "bao")
+        /// Nếu có → hệ thống tự tính CurrentQuantity = PurchaseQuantity × ConversionRate
+        /// Nếu null → dùng Quantity trực tiếp theo BaseUnit
+        /// </summary>
+        public int? PurchaseUnitId { get; set; }
+
+        /// <summary>
+        /// Số lượng theo đơn vị nhập (VD: 2 thùng)
+        /// Bắt buộc nếu PurchaseUnitId có giá trị
+        /// </summary>
+        [Range(0.001, double.MaxValue, ErrorMessage = "Số lượng nhập phải > 0")]
+        public decimal? PurchaseQuantity { get; set; }
     }
 }

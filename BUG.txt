@@ -1,0 +1,88 @@
+Đếm lại toàn bộ từ đầu session:
+
+---
+
+## Tổng hợp — Tất cả items cần xử lý
+
+### 🔴 Critical Bugs — Sai nghiệp vụ, ảnh hưởng runtime
+
+| # | Bug | File | Mô tả |
+|---|-----|------|-------|
+| C1 | FIFO asymmetry | `IngredientService.cs` L335 | Restore dùng `LastOrDefault()` → LIFO, sai hoàn toàn |
+| C2 | Guest order deduct = 0 | `OrderService.cs` L401–468 | `SizeMultiplier` không được map → trừ kho = 0 mỗi guest order |
+| C3 | Guest order thiếu Size/Topping | `GuestOrderCreateDto.cs` | Customer chọn size/topping nhưng không được gửi lên |
+| C4 | `ing.unit` undefined FE | `ModalRecipe.jsx` L65,161,229 | Root cause dropdown đơn vị trống |
+| C5 | `ing.unit` undefined FE | `QuanLyTopping.jsx` 2 chỗ | Dropdown nguyên liệu hiện "(undefined)" |
+| C6 | EF Core static method | `ToppingService.cs` L29 | ✅ Đã fix |
+| C7 | EF Core static method | `ProductSizeService.cs` L25 | ✅ Đã fix |
+| C8 | `CloseShiftAsync` IsPaid | `ShiftService.cs` | Revenue tính cả đơn chưa thanh toán — **chưa fix** |
+
+---
+
+### 🟠 Logic Gaps — Thiếu nghiệp vụ quan trọng
+
+| # | Gap | File | Mô tả |
+|---|-----|------|-------|
+| G1 | Không snapshot recipe khi order | `OrderService.cs` | Đổi recipe → sai COGS lịch sử |
+| G2 | Không apply YieldFactor | `IngredientService.cs` | Chưa có — prep loss không được tính |
+| G3 | Hardcode `UNIT_CONVERSION` FE | `ModalRecipe.jsx` | Không dùng `ing.Units` từ DB |
+| G4 | Float precision trong Select | `ModalRecipe.jsx` L189 | `0.001 === 0.001` có thể fail silently |
+| G5 | `RecipeSnapshotQty` thiếu | `OrderItem.cs` | Không có historical deduct qty |
+| G6 | Không có variance tracking | — | Không biết thực tế trừ bao nhiêu vs lý thuyết |
+| G7 | Không có BOM versioning | `Recipe.cs` | Đổi recipe không có lịch sử |
+| G8 | WACC chưa tính | `IngredientService.cs` | `ImportPricePerBaseUnit` có nhưng không dùng |
+
+---
+
+### 🟡 Backlog bugs — Đã note, chưa fix
+
+| # | Bug | File | Mô tả |
+|---|-----|------|-------|
+| BL-01 | `OrderItem` QueryFilter NullRef | `ApplicationDbContext.cs` L246 | `!oi.Order.IsDeleted` → NullRef nếu orphaned |
+| BL-03 | Disk leak ảnh cũ | `ProductController.cs` | Update product không xóa ảnh cũ |
+| BL-04 | Race condition ảnh | `ProductController.cs` | Double-delete concurrent |
+| BL-05 | Thiếu `GET /Product/{id}` | `ProductController.cs` | Không có endpoint get single |
+| BL-06 | `IRepository<T>` dead | `IRepository.cs` | Interface không khớp implementation |
+| BL-07 | `DateTime.Now` vs `UtcNow` | `ProductService.cs` | Timezone conflict |
+| BL-08 | `CreateProduct` trả DTO rỗng | `ProductService.cs` | Chỉ có Id + Name sau create |
+| BL-09 | Memory leak `createObjectURL` | `ModalAddProduct.jsx`, `QuanLySanPham.jsx` | Chưa revoke |
+| BL-10 | Validation yếu `ModalAddProduct` | `ModalAddProduct.jsx` | Không check price≤0, name.trim() |
+| BL-11 | Import thừa Azure SDK | `ApplicationDbContext.cs` L5 | Dead using |
+| BL-12 | `SaveChanges()` sync bypass audit | `ApplicationDbContext.cs` | Chỉ override async |
+| BL-13 | Dead import App.jsx | `App.jsx` | ✅ Đã fix |
+| BL-14 | `ProductSizeController` trả `[]` | `ProductSizeController.cs` | productId không tồn tại → 404 |
+| BL-15 | Status code 200 thay 201 | `ToppingController`, `ProductSizeController` | Không chuẩn REST |
+
+---
+
+### 🔵 Cần làm mới — Chuẩn công nghiệp
+
+| # | Feature | Loại | Mô tả |
+|---|---------|------|-------|
+| N1 | `Recipe.YieldFactor` | Migration | % usable sau prep loss |
+| N2 | `Recipe.IsActive` | Migration | Deactivate recipe line |
+| N3 | `Recipe.Version` | Migration | Track thay đổi |
+| N4 | `OrderItem.RecipeSnapshotQty` | Migration | Snapshot qty tại thời điểm order |
+| N5 | `IngredientUsageLog` table | Migration + Service | Variance tracking |
+| N6 | `RecipeVersion` table | Migration + Service | Full BOM version history |
+| N7 | WACC endpoint | Service + Controller | Weighted avg cost calculation |
+| N8 | Variance report endpoint | Service + Controller | Theoretical vs Actual |
+| N9 | Refactor `ModalRecipe` form | Frontend | Dùng `ing.Units` từ DB, apply YieldFactor |
+
+---
+
+## Tổng kết số lượng
+
+| Nhóm | Số lượng | Trạng thái |
+|------|---------|-----------|
+| 🔴 Critical bugs | 8 | 2 đã fix, 6 chưa |
+| 🟠 Logic gaps | 8 | 0 đã fix |
+| 🟡 Backlog bugs | 15 | 1 đã fix, 14 chưa |
+| 🔵 Tính năng mới | 9 | 0 đã fix |
+| **Tổng** | **40** | **3 đã fix, 37 còn lại** |
+
+---
+
+**Ưu tiên làm ngay:** C1→C2→C3→C4→C5→C8 (6 critical còn lại) → N1→N2→N3→N4 (migration) → N5→N6 (bảng mới) → N7→N8 (endpoints) → G3→G4 (ModalRecipe refactor) → BL theo thứ tự.
+
+Bắt đầu C1+C4+C5 luôn không — 3 cái đơn giản nhất, không rủi ro?

@@ -54,6 +54,8 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 // Product
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IToppingService, ToppingService>();
+builder.Services.AddScoped<IProductSizeService, ProductSizeService>();
 
 // Ingredient (MỚI - 4 dòng)
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();

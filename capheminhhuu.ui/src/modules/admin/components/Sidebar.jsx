@@ -10,8 +10,9 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import PeopleIcon from '@mui/icons-material/People';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import SecurityIcon from '@mui/icons-material/Security';
+
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
+import IcecreamIcon from '@mui/icons-material/Icecream';
 import { Link, useLocation } from 'react-router-dom';
 
 const NAV_ITEMS = [
@@ -23,7 +24,7 @@ const NAV_ITEMS = [
     { label: 'Khu Vực & Bàn',        path: '/admin/quanlykhuvucban',         icon: <MeetingRoomIcon sx={{ color: '#10b981' }} /> },
     { label: 'Quản lý Nhân viên',    path: '/admin/quanlynhanvien',          icon: <PeopleIcon sx={{ color: '#9333ea' }} /> },
     { label: 'Quản lý Ca',           path: '/admin/quanlycalamviec',         icon: <AccessTimeIcon sx={{ color: '#d97706' }} /> },
-    { label: 'Bảo mật',              path: '/admin/baomat',                  icon: <SecurityIcon sx={{ color: '#ef4444' }} /> },
+    { label: 'Quản lý Topping',      path: '/admin/quanlytopping',           icon: <IcecreamIcon sx={{ color: '#db2777' }} /> },
 ];
 
 export default function Sidebar({

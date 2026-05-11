@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Circle } from 'lucide-react';
 import { getTodayOrders, updateOrderStatus } from '../../cashier/services/orderService';
 import { startConnection, onReceiveNewOrder, onOrderStatusUpdated, stopConnection } from '../../../common/utils/signalRConnection';
+import { revokeTokenAPI } from '../../../common/services/authService';
 
 // === STATUS CONFIG — Map trạng thái backend → UI ===
 const statusConfig = {
@@ -100,15 +101,29 @@ export default function KDSScreen() {
     const [orders, setOrders] = useState([]);
     const [connected, setConnected] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [shiftStarted, setShiftStarted] = useState(() => {
+        return sessionStorage.getItem('kdsShiftStarted') === 'true';
+    });
 
     // ✅ thêm staff + logout
-    const staffUser = JSON.parse(localStorage.getItem('staffUser') || '{}');
+    const staffUser = JSON.parse(localStorage.getItem('kitchenUser') || '{}');
     const staffName = staffUser.fullName || 'Bếp';
 
-    const handleLogout = () => {
-        localStorage.removeItem('staffToken');
-        localStorage.removeItem('staffUser');
-        window.location.href = '/staff/login';
+    const handleLogout = async () => {
+        if (!window.confirm('Bạn có chắc muốn đăng xuất?')) return;
+        try {
+            const refreshToken = localStorage.getItem('kitchenRefreshToken');
+            if (refreshToken) await revokeTokenAPI(refreshToken);
+        } catch (err) {
+            console.warn('Revoke token failed:', err);
+        } finally {
+            localStorage.removeItem('kitchenToken');
+            localStorage.removeItem('kitchenRefreshToken');
+            localStorage.removeItem('kitchenUser');
+            stopConnection();
+            sessionStorage.removeItem('kdsShiftStarted');
+            window.location.href = '/login';
+        }
     };
 
     const fetchOrders = useCallback(async () => {
@@ -182,6 +197,38 @@ export default function KDSScreen() {
         return (
             <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
                 <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!shiftStarted) {
+        return (
+            <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
+                <div className="bg-neutral-800 rounded-2xl p-8 w-[380px] flex flex-col items-center gap-6 shadow-2xl">
+                    <div className="text-5xl">👨‍🍳</div>
+                    <div className="text-center">
+                        <h2 className="text-xl font-bold text-white mb-2">Xác nhận bắt đầu ca</h2>
+                        <p className="text-neutral-400 text-sm">Xin chào, <span className="text-green-400 font-semibold">{staffName}</span></p>
+                        <p className="text-neutral-500 text-xs mt-1">
+                            {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            sessionStorage.setItem('kdsShiftStarted', 'true');
+                            setShiftStarted(true);
+                        }}
+                        className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-lg transition-colors active:scale-95"
+                    >
+                        Bắt đầu ca làm việc
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="text-neutral-500 hover:text-red-400 text-sm transition-colors"
+                    >
+                        Không phải tôi? Đăng xuất
+                    </button>
+                </div>
             </div>
         );
     }

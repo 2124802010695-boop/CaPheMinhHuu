@@ -84,7 +84,7 @@ namespace CaPheMinhHuu.Services.Implements
                 Status = t.Status,
                 QRCode = t.QRCode,
                 CurrentOrderId = t.Orders
-                    .FirstOrDefault(o => o.Status != "Completed" && o.Status != "Cancelled")?.Id
+                    .FirstOrDefault(o => o.Status != "Completed" && o.Status != "Cancelled" && !o.IsPaid)?.Id
             });
         }
     }

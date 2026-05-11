@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTodayOrders, updateOrderStatus } from '../services/orderService';
-import { onConnectionReady, onOrderStatusUpdated, onReceiveNewOrder } from '../../../common/utils/signalRConnection';
+import { onConnectionReady, onOrderStatusUpdated, onReceiveNewOrder, onOrderPaid } from '../../../common/utils/signalRConnection';
 
 const statusConfig = {
     'Pending':    { label: 'Chờ xử lý',   color: 'text-[#ffb95f]', bg: 'bg-[#e29100]/20', icon: 'schedule' },
@@ -26,6 +26,7 @@ export default function OrderList() {
         let timer;
         let offStatus = () => {};
         let offNew    = () => {};
+        let offPaid   = () => {};
 
         const cleanup = onConnectionReady(() => {
             const debouncedFetch = () => {
@@ -34,12 +35,14 @@ export default function OrderList() {
             };
             offStatus = onOrderStatusUpdated(debouncedFetch) || (() => {});
             offNew    = onReceiveNewOrder(debouncedFetch)    || (() => {});
+            offPaid   = onOrderPaid(debouncedFetch)          || (() => {});
         });
 
         return () => {
             clearTimeout(timer);
             offStatus();
             offNew();
+            offPaid();
             cleanup();
         };
     }, []);

@@ -6,11 +6,12 @@ const APP_HUB_URL = 'https://localhost:7280/appHub';
 
 let connection = null;
 
-const getToken = () =>
-    localStorage.getItem('adminToken') ||
-    localStorage.getItem('staffToken') ||
-    localStorage.getItem('token') ||
-    '';
+const getToken = () => {
+    const path = window.location.pathname;
+    if (path.startsWith('/admin')) return localStorage.getItem('adminToken') || '';
+    if (path.startsWith('/Bep') || path.startsWith('/bep')) return localStorage.getItem('kitchenToken') || '';
+    return localStorage.getItem('cashierToken') || '';
+};
 
 /**
  * Khởi tạo và bắt đầu kết nối SignalR tới KitchenHub.
@@ -176,4 +177,21 @@ export const onConnectionReady = (callback) => {
         }
     }, 200);
     return () => clearInterval(interval);
+};
+
+/**
+ * Đăng ký listener khi đơn hàng được đánh dấu đã thanh toán.
+ * @param {function} callback - Nhận orderId: number
+ */
+export const onOrderPaid = (callback) => {
+    if (!connection) {
+        console.warn('[SignalR] onOrderPaid: connection chưa sẵn sàng');
+        return () => {};
+    }
+    const handler = (orderId) => {
+        console.log('[SignalR] Đơn #' + orderId + ' đã thanh toán');
+        callback(orderId);
+    };
+    connection.on('OrderPaid', handler);
+    return () => connection.off('OrderPaid', handler);
 };

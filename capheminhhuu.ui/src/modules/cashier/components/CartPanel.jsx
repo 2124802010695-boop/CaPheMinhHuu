@@ -1,5 +1,8 @@
-import React, { useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, forwardRef, useImperativeHandle, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { createOrder } from '../services/orderService';
+import ProductCustomizeModal from './ProductCustomizeModal';
+import { getToppings, getProductSizes } from '../services/orderService';
 
 const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaymentRequired }, ref) {
     const [cart, setCart] = useState([]);
@@ -9,60 +12,75 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState(null);
+    const [pendingProduct, setPendingProduct] = useState(null);
+    const toastTimer = useRef(null);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
-        clearTimeout(window._cartToastTimer);
-        window._cartToastTimer = setTimeout(() => setToast(null), 2500);
+        clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(null), 2500);
     };
 
-    const addToCart = (product) => {
+    const handleProductClick = (product) => {
         if (!product.isActive) return;
-        setCart(prev => {
-            const existing = prev.find(item => item.productId === product.id);
-            if (existing) {
-                return prev.map(item =>
-                    item.productId === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
-                );
-            }
-            return [...prev, {
-                productId: product.id,
-                productName: product.name,
-                price: product.price,
-                quantity: 1,
-                imageUrl: product.imageUrl,
-                note: ''
-            }];
-        });
+        setPendingProduct(product);
     };
 
-    useImperativeHandle(ref, () => ({ addToCart }));
+    const addToCart = (product, customizeResult) => {
+        const {
+            sizeLabel, sizeExtraPrice, sizeMultiplier,
+            sugarLevel, iceLevel, quantity, note, toppings
+        } = customizeResult;
 
-    const updateQuantity = (productId, delta) => {
+        const toppingTotal = toppings.reduce((sum, t) => sum + t.price * t.quantity, 0);
+
+        setCart(prev => [...prev, {
+            cartLineId: uuidv4(),
+            productId: product.id,
+            productName: product.name,
+            price: product.price,
+            quantity,
+            imageUrl: product.imageUrl,
+            note,
+            sizeLabel,
+            sizeExtraPrice: sizeExtraPrice ?? 0,
+            sizeMultiplier: sizeMultiplier ?? 1,
+            sugarLevel: sugarLevel ?? 100,
+            iceLevel: iceLevel ?? 100,
+            toppings: toppings ?? [],
+            toppingTotal,
+        }]);
+        setPendingProduct(null);
+    };
+
+    useImperativeHandle(ref, () => ({ addToCart: handleProductClick }));
+
+    const updateQuantity = (cartLineId, delta) => {
         setCart(prev => prev.map(item => {
-            if (item.productId === productId) {
+            if (item.cartLineId === cartLineId) {
                 const newQty = item.quantity + delta;
-                return newQty > 0 ? { ...item, quantity: newQty } : item;
+                return { ...item, quantity: newQty };
             }
             return item;
         }).filter(item => item.quantity > 0));
     };
 
-    const updateNote = (productId, note) => {
+    const updateNote = (cartLineId, note) => {
         setCart(prev => prev.map(item =>
-            item.productId === productId ? { ...item, note } : item
+            item.cartLineId === cartLineId ? { ...item, note } : item
         ));
     };
 
-    const removeFromCart = (productId) => {
-        setCart(prev => prev.filter(item => item.productId !== productId));
+    const removeFromCart = (cartLineId) => {
+        setCart(prev => prev.filter(item => item.cartLineId !== cartLineId));
     };
 
     const clearCart = () => setCart([]);
 
-    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => {
+        const lineTotal = (item.price + (item.sizeExtraPrice ?? 0)) * item.quantity + (item.toppingTotal ?? 0);
+        return sum + lineTotal;
+    }, 0);
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n) + '₫';
 
@@ -81,7 +99,17 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
                 items: cart.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
-                    note: item.note || null
+                    note: item.note,
+                    priceAtOrder: item.price,
+                    sizeLabel: item.sizeLabel,
+                    sizeExtraPrice: item.sizeExtraPrice ?? 0,
+                    sizeMultiplier: item.sizeMultiplier ?? 1,
+                    sugarLevel: String(item.sugarLevel ?? 100),
+                    iceLevel: String(item.iceLevel ?? 100),
+                    toppings: (item.toppings ?? []).map(t => ({
+                        toppingId: t.toppingId,
+                        quantity: t.quantity,
+                    })),
                 }))
             };
             const order = await createOrder(dto);
@@ -162,7 +190,7 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
                     </div>
                 ) : (
                     cart.map(item => (
-                        <div key={item.productId} className="p-2.5 bg-[#131313] rounded-xl flex flex-col gap-2">
+                        <div key={item.cartLineId} className="p-2.5 bg-[#131313] rounded-xl flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#2a2a2a] flex-shrink-0">
                                     {item.imageUrl ? (
@@ -175,21 +203,42 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-[#e5e2e1] truncate">{item.productName}</p>
+                                    {/* Size + customization badges */}
+                                    {item.sizeLabel && (
+                                      <span style={{ fontSize: 11, color: '#888', marginRight: 6 }}>
+                                        Size {item.sizeLabel}
+                                      </span>
+                                    )}
+                                    {item.sugarLevel !== 100 && (
+                                      <span style={{ fontSize: 11, color: '#888', marginRight: 6 }}>
+                                        Đường {item.sugarLevel}%
+                                      </span>
+                                    )}
+                                    {item.iceLevel !== 100 && (
+                                      <span style={{ fontSize: 11, color: '#888', marginRight: 6 }}>
+                                        Đá {item.iceLevel}%
+                                      </span>
+                                    )}
+                                    {item.toppings?.length > 0 && (
+                                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                                        + {item.toppings.map(t => t.name).join(', ')}
+                                      </div>
+                                    )}
                                     <div className="flex items-center gap-1.5 mt-1">
-                                        <button onClick={() => updateQuantity(item.productId, -1)}
+                                        <button onClick={() => updateQuantity(item.cartLineId, -1)}
                                             className="w-5 h-5 flex items-center justify-center rounded bg-[#2a2a2a] text-[#86948a] hover:bg-[#393939]">
                                             <span className="material-symbols-outlined text-xs">remove</span>
                                         </button>
                                         <span className="text-xs font-bold text-[#e5e2e1] px-1 min-w-[16px] text-center">{item.quantity}</span>
-                                        <button onClick={() => updateQuantity(item.productId, 1)}
+                                        <button onClick={() => updateQuantity(item.cartLineId, 1)}
                                             className="w-5 h-5 flex items-center justify-center rounded bg-[#2a2a2a] text-[#86948a] hover:bg-[#393939]">
                                             <span className="material-symbols-outlined text-xs">add</span>
                                         </button>
                                     </div>
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                    <p className="text-xs font-bold text-[#4edea3]">{fmt(item.price * item.quantity)}</p>
-                                    <button onClick={() => removeFromCart(item.productId)}
+                                    <p className="text-xs font-bold text-[#4edea3]">{fmt((item.price + (item.sizeExtraPrice ?? 0)) * item.quantity + (item.toppingTotal ?? 0))}</p>
+                                    <button onClick={() => removeFromCart(item.cartLineId)}
                                         className="mt-1 text-[#86948a]/30 hover:text-red-400 transition-colors">
                                         <span className="material-symbols-outlined text-base">close</span>
                                     </button>
@@ -199,7 +248,7 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
                                 type="text"
                                 placeholder="Ghi chú món..."
                                 value={item.note || ''}
-                                onChange={(e) => updateNote(item.productId, e.target.value)}
+                                onChange={(e) => updateNote(item.cartLineId, e.target.value)}
                                 className="w-full py-1 px-2 rounded-lg bg-[#2a2a2a] text-[#86948a] text-[11px] border border-[#3c4a42]/20 focus:border-[#10b981] focus:outline-none placeholder:text-[#86948a]/50"
                             />
                         </div>
@@ -226,7 +275,7 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
                             <option value="Cash">Tiền mặt</option>
                             <option value="Transfer">CK</option>
                             <option value="Card">Thẻ</option>
-                            <option value="VNPay">VNPAY</option>
+
                         </select>
                     </div>
                 </div>
@@ -250,6 +299,13 @@ const CartPanel = forwardRef(function CartPanel({ tables, onOrderCreated, onPaym
                     {submitting ? 'Đang xử lý...' : 'TẠO ĐƠN HÀNG'}
                 </button>
             </div>
+            {pendingProduct && (
+                <ProductCustomizeModal
+                    product={pendingProduct}
+                    onConfirm={(result) => addToCart(pendingProduct, result)}
+                    onCancel={() => setPendingProduct(null)}
+                />
+            )}
         </section>
     );
 });

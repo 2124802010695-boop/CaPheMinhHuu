@@ -1,4 +1,6 @@
-﻿namespace CaPheMinhHuu.DTOs.Ingredient
+using System.Text.Json.Serialization;
+
+namespace CaPheMinhHuu.DTOs.Ingredient
 {
     /// <summary>
     /// DTO để hiển thị thông tin nguyên liệu
@@ -9,6 +11,7 @@
         // ========== MASTER DATA ==========
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("sku")]
         public string? SKU { get; set; }
         public string BaseUnit { get; set; } = string.Empty;
         public int IngredientCategoryId { get; set; }
@@ -79,5 +82,16 @@
         /// Trạng thái HSD: "Fresh", "NearExpiry", "Expired"
         /// </summary>
         public string ExpiryStatus { get; set; } = string.Empty;
+
+        // ========== PURCHASE UNIT ==========
+        /// <summary>
+        /// Tên đơn vị nhập kho (VD: thùng, bao) — null nếu batch cũ
+        /// </summary>
+        public string? PurchaseUnitName { get; set; }
+
+        /// <summary>
+        /// Số lượng theo đơn vị nhập (VD: 2 thùng) — null nếu batch cũ
+        /// </summary>
+        public decimal? PurchaseQuantity { get; set; }
     }
 }

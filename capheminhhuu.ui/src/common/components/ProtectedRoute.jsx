@@ -48,9 +48,19 @@ const ProtectedRoute = ({
                     }
                 });
                 // Token valid → register tab (auto-restore session)
-                await registerTabAPI(tabId);
+                // Wrap in try/catch — tab registration failure must NOT cause redirect
+                try {
+                    await registerTabAPI(tabId);
+                } catch (tabErr) {
+                    console.warn('[ProtectedRoute] registerTab failed (non-fatal):', tabErr?.response?.status);
+                }
                 if (isMounted) setStatus('ok');
             } catch (err) {
+                console.error('[ProtectedRoute] check-token failed:', 
+                    err?.response?.status, 
+                    err?.config?.url,
+                    authKey
+                );
                 // Chỉ xóa token nếu thực sự unauthorized (401)
                 // Không xóa nếu rớt mạng hoặc server lỗi (500, network error)
                 if (err.response?.status === 401) {

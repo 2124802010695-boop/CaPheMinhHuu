@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CaPheMinhHuu.Models
@@ -29,5 +29,6 @@ namespace CaPheMinhHuu.Models
         public int? CategoryId { get; set; }
         public Category? Category { get; set; }
         public ICollection<Recipe> Recipes { get; set; } = new List<Recipe>();
+        public ICollection<ProductSize> Sizes { get; set; } = new List<ProductSize>();
     }
 }

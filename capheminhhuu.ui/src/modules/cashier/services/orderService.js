@@ -10,8 +10,14 @@ export const updateOrderStatus = (id, status) =>
         headers: { 'Content-Type': 'application/json' }
     });
 
-export const getOrderByCode = (orderCode) =>
-    axios.get(`/Order/code/${orderCode}`);
-
 export const createVnPayUrl = (orderCode) =>
     axios.post('/payment/vnpay/create-url', { orderCode });
+
+export const getToppings = () =>
+    axios.get('/Topping');
+
+export const getProductSizes = (productId) =>
+    axios.get(`/Product/${productId}/sizes`);
+
+export const markAsPaid = (id) =>
+    axios.patch(`/Order/${id}/pay`);

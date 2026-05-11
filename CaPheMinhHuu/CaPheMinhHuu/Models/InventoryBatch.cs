@@ -1,4 +1,4 @@
-﻿using CaPheMinhHuu.Models;
+using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -32,5 +32,14 @@ public class InventoryBatch : BaseEntity
     public DateTime? ExpiryDate { get; set; }
     public string? CreatedBy { get; set; }
 
+    // ========== PURCHASE UNIT (nullable — batch cũ = NULL) ==========
+    // Đơn vị nhập kho: bao, thùng, hộp...
+    public int? PurchaseUnitId { get; set; }
+    [ForeignKey("PurchaseUnitId")]
+    public IngredientUnit? PurchaseUnit { get; set; }
 
+    // Số lượng theo đơn vị nhập (VD: 2 thùng)
+    // CurrentQuantity = PurchaseQuantity × ConversionRate (tính trong Service)
+    [Precision(18, 3)]
+    public decimal? PurchaseQuantity { get; set; }
 }

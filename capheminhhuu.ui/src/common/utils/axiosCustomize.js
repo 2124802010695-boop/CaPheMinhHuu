@@ -11,8 +11,11 @@ const getTokenKeys = () => {
     if (path.startsWith("/admin")) {
         return { tokenKey: "adminToken", refreshKey: "adminRefreshToken", userKey: "adminUser" };
     }
-    // Cashier (/cashier/*), Kitchen (/Bep), Staff — dùng staffToken
-    return { tokenKey: "staffToken", refreshKey: "staffRefreshToken", userKey: "staffUser" };
+    if (path.startsWith("/Bep") || path.startsWith("/bep")) {
+        return { tokenKey: "kitchenToken", refreshKey: "kitchenRefreshToken", userKey: "kitchenUser" };
+    }
+    // Cashier /cashier/*
+    return { tokenKey: "cashierToken", refreshKey: "cashierRefreshToken", userKey: "cashierUser" };
 };
 
 // ======= REQUEST INTERCEPTOR =======
@@ -53,7 +56,13 @@ instance.interceptors.response.use(
         return response && response.data ? response.data : response;
     },
     async function (error) {
+        console.error('[Interceptor] Response error:', 
+            error?.response?.status, 
+            error?.config?.url,
+            error?.response?.data
+        );
         const originalRequest = error.config;
+        if (!originalRequest) return Promise.reject(error);
 
         // Nếu lỗi 401 VÀ chưa retry → thử refresh token
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -87,6 +96,7 @@ instance.interceptors.response.use(
             if (!refreshToken) {
                 isRefreshing = false;
                 // Không có refresh token → redirect login
+                console.error('[Auth] No refresh token found, forcing logout. Path:', window.location.pathname, 'tokenKey:', tokenKey);
                 handleForceLogout(tokenKey, refreshKey, userKey);
                 return Promise.reject(error);
             }
@@ -111,9 +121,15 @@ instance.interceptors.response.use(
                     processQueue(null, newData.token);
 
                     return instance(originalRequest);
+                } else {
+                    console.error('[Auth] Refresh response missing token:', newData);
+                    processQueue(new Error('Refresh token response invalid'), null);
+                    handleForceLogout(tokenKey, refreshKey, userKey);
+                    return Promise.reject(new Error('Refresh token response invalid'));
                 }
             } catch (refreshError) {
                 processQueue(refreshError, null);
+                console.error('[Auth] Refresh token failed:', refreshError?.response?.status, refreshError?.response?.data, 'refreshToken used:', refreshToken?.substring(0, 20) + '...');
                 handleForceLogout(tokenKey, refreshKey, userKey);
                 return Promise.reject(refreshError);
             } finally {
@@ -127,6 +143,7 @@ instance.interceptors.response.use(
 
 // Helper: Force logout khi refresh token cũng hết hạn
 function handleForceLogout(tokenKey, refreshKey, userKey) {
+    console.error('[Auth] Force logout triggered. tokenKey:', tokenKey, 'path:', window.location.pathname);
     // Không gọi revoke-tab ở đây vì token đã invalid
     // revoke-tab sẽ được gọi khi user logout chủ động
     localStorage.removeItem(tokenKey);

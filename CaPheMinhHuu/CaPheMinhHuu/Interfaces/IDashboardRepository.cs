@@ -35,5 +35,13 @@ namespace CaPheMinhHuu.Interfaces
 
         
         Task<decimal> GetCancellationRateAsync(DateTime from, DateTime to);
+        Task<List<RevenueByPaymentMethodDto>> GetRevenueByPaymentMethodAsync(DateTime from, DateTime to);
+        Task<List<TopToppingDto>> GetTopToppingsAsync(DateTime from, DateTime to, int take = 5);
+
+        // D3 — WACC per ingredient
+        Task<List<IngredientWaccDto>> GetIngredientWaccAsync(int? ingredientId = null);
+
+        // D4 — Variance report
+        Task<List<IngredientVarianceDto>> GetIngredientVarianceAsync(DateTime from, DateTime to);
     }
 }

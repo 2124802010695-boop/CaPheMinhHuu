@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { closeShiftAPI, getCurrentShiftAPI } from '../services/shiftService';
 
 export default function ShiftClose() {
@@ -8,6 +8,7 @@ export default function ShiftClose() {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
+    const { onShiftClosed } = useOutletContext() || {};
 
     useEffect(() => {
         fetchCurrentShift();
@@ -52,6 +53,7 @@ export default function ShiftClose() {
             await closeShiftAPI(currentShift.id, amount);
             alert('Đóng ca thành công!');
             // Sau khi đóng ca thì chuyển về xem báo cáo / pos
+            if (onShiftClosed) await onShiftClosed();
             navigate(`/cashier/shift-report?shiftId=${currentShift.id}`);
         } catch (error) {
             console.error('Lỗi khi đóng ca:', error);

@@ -7,6 +7,7 @@ namespace CaPheMinhHuu.DTOs.Order
         // POS tại quán: customer info không bắt buộc
         public string? CustomerName { get; set; }
         public string? Phone { get; set; }
+        public string? Email { get; set; }
         public string? Address { get; set; }
         public string PaymentMethod { get; set; } = "Cash";
         public int? TableId { get; set; }

@@ -22,10 +22,12 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---OrderController.cs
 |   |   |   +---PaymentController.cs
 |   |   |   +---ProductController.cs
+|   |   |   +---ProductSizeController.cs
 |   |   |   +---RecipeController.cs
 |   |   |   +---ShiftController.cs
 |   |   |   +---StaffController.cs
-|   |   |   \---TableController.cs
+|   |   |   +---TableController.cs
+|   |   |   \---ToppingController.cs
 |   |   +---DTOs
 |   |   |   +---Area
 |   |   |   |   +---AreaCreateDto.cs
@@ -57,6 +59,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   |   +---OrderEmailDto.cs
 |   |   |   |   \---OrderItemInfo.cs
 |   |   |   +---Ingredient
+|   |   |   |   +---AddIngredientUnitDto.cs
 |   |   |   |   +---BatchDto.cs
 |   |   |   |   +---IngredientCreateDto.cs
 |   |   |   |   +---IngredientUpdateDto.cs
@@ -70,6 +73,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   |   +---GuestOrderCreateDto.cs
 |   |   |   |   +---OrderCreateDto.cs
 |   |   |   |   +---OrderItemDto.cs
+|   |   |   |   +---OrderItemToppingDto.cs
 |   |   |   |   +---OrderItemViewDto.cs
 |   |   |   |   \---OrderViewDto.cs
 |   |   |   +---Payment
@@ -79,8 +83,11 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   |   +---ProductCreateDto.cs
 |   |   |   |   +---ProductUpdateDto.cs
 |   |   |   |   \---ProductViewDto.cs
+|   |   |   +---ProductSize
+|   |   |   |   \---ProductSizeDto.cs
 |   |   |   +---Recipe
 |   |   |   |   +---RecipeCreateDto.cs
+|   |   |   |   +---RecipeVersionDto.cs
 |   |   |   |   \---RecipeViewDto.cs
 |   |   |   +---Shift
 |   |   |   |   +---ShiftCloseDto.cs
@@ -90,10 +97,12 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   |   \---ZReportDto.cs
 |   |   |   +---Staff
 |   |   |   |   \---UpdateStaffRequest.cs
-|   |   |   \---Table
-|   |   |       +---CreateTableDto.cs
-|   |   |       +---TableResponseDto.cs
-|   |   |       \---UpdateTableDto.cs
+|   |   |   +---Table
+|   |   |   |   +---CreateTableDto.cs
+|   |   |   |   +---TableResponseDto.cs
+|   |   |   |   \---UpdateTableDto.cs
+|   |   |   \---Topping
+|   |   |       \---ToppingDto.cs
 |   |   +---Data
 |   |   |   \---ApplicationDbContext.cs
 |   |   +---Hubs
@@ -128,6 +137,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---IPaymentService.cs
 |   |   |   +---IProductRepository.cs
 |   |   |   +---IProductService.cs
+|   |   |   +---IProductSizeService.cs
 |   |   |   +---IRecipeRepository.cs
 |   |   |   +---IRecipeService.cs
 |   |   |   +---IRefreshTokenRepository.cs
@@ -137,6 +147,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---IStaffService.cs
 |   |   |   +---ITableRepository.cs
 |   |   |   +---ITableService.cs
+|   |   |   +---IToppingService.cs
 |   |   |   \---IUserRepository.cs
 |   |   +---Middleware
 |   |   |   \---GlobalExceptionMiddleware.cs
@@ -213,6 +224,22 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---20260508093506_AddActiveSessionsShiftLock.cs
 |   |   |   +---20260508123950_RemoveTabIdUniqueIndex.Designer.cs
 |   |   |   +---20260508123950_RemoveTabIdUniqueIndex.cs
+|   |   |   +---20260509102125_AddToppingProductSizeOrderCustomization.Designer.cs
+|   |   |   +---20260509102125_AddToppingProductSizeOrderCustomization.cs
+|   |   |   +---20260509105045_AddSizeMultiplierToOrderItem.Designer.cs
+|   |   |   +---20260509105045_AddSizeMultiplierToOrderItem.cs
+|   |   |   +---20260509164012_AddIsPaidToOrder.Designer.cs
+|   |   |   +---20260509164012_AddIsPaidToOrder.cs
+|   |   |   +---20260510074320_AddBOMSnapshot_YieldFactor_RecipeVersion.Designer.cs
+|   |   |   +---20260510074320_AddBOMSnapshot_YieldFactor_RecipeVersion.cs
+|   |   |   +---20260510074618_FixQueryFilter_BOMSnapshot.Designer.cs
+|   |   |   +---20260510074618_FixQueryFilter_BOMSnapshot.cs
+|   |   |   +---20260510084917_AddIngredientUsageLog.Designer.cs
+|   |   |   +---20260510084917_AddIngredientUsageLog.cs
+|   |   |   +---20260510140847_AddRecipeVersioning.Designer.cs
+|   |   |   +---20260510140847_AddRecipeVersioning.cs
+|   |   |   +---20260511072721_AddPurchaseUnitToBatch.Designer.cs
+|   |   |   +---20260511072721_AddPurchaseUnitToBatch.cs
 |   |   |   \---ApplicationDbContextModelSnapshot.cs
 |   |   +---Models
 |   |   |   +---ActiveSession.cs
@@ -221,23 +248,31 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |   +---BaseEntity.cs
 |   |   |   +---Category.cs
 |   |   |   +---Coupon.cs
+|   |   |   +---FifoDeductContext.cs
 |   |   |   +---HolidayConfig.cs
 |   |   |   +---Ingredient.cs
 |   |   |   +---IngredientCategory.cs
 |   |   |   +---IngredientUnit.cs
+|   |   |   +---IngredientUsageLog.cs
 |   |   |   +---InventoryBatch.cs
 |   |   |   +---LoginHistory.cs
 |   |   |   +---Order.cs
 |   |   |   +---OrderItem.cs
+|   |   |   +---OrderItemIngredientSnapshot.cs
+|   |   |   +---OrderItemTopping.cs
 |   |   |   +---OtpCode.cs
 |   |   |   +---Payment.cs
 |   |   |   +---Product.cs
+|   |   |   +---ProductSize.cs
 |   |   |   +---Recipe.cs
+|   |   |   +---RecipeVersion.cs
+|   |   |   +---RecipeVersionLine.cs
 |   |   |   +---RefreshToken.cs
 |   |   |   +---RequestTicket.cs
 |   |   |   +---Reservation.cs
 |   |   |   +---Shift.cs
 |   |   |   +---Table.cs
+|   |   |   +---Topping.cs
 |   |   |   \---User.cs
 |   |   +---Program.cs
 |   |   +---Properties
@@ -278,10 +313,12 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |   |       +---OrderService.cs
 |   |   |       +---OtpService.cs
 |   |   |       +---ProductService.cs
+|   |   |       +---ProductSizeService.cs
 |   |   |       +---RecipeService.cs
 |   |   |       +---ShiftService.cs
 |   |   |       +---StaffService.cs
 |   |   |       +---TableService.cs
+|   |   |       +---ToppingService.cs
 |   |   |       \---VnPayService.cs
 |   |   +---appsettings.Development.json
 |   |   +---appsettings.json
@@ -346,8 +383,12 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |   |   +---ModalAddIngredient.jsx
 |   |       |   |   +---ModalAddIngredientCategory.jsx
 |   |       |   |   +---ModalAddProduct.jsx
+|   |       |   |   +---ModalEditBatch.jsx
+|   |       |   |   +---ModalEditCategory.jsx
 |   |       |   |   +---ModalEditIngredient.jsx
+|   |       |   |   +---ModalEditIngredientCategory.jsx
 |   |       |   |   +---ModalIngredientDetail.jsx
+|   |       |   |   +---ModalManageSizes.jsx
 |   |       |   |   +---ModalRecipe.jsx
 |   |       |   |   +---Navbar.jsx
 |   |       |   |   \---Sidebar.jsx
@@ -362,6 +403,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |   |   +---QuanLyKhuVucBan.jsx
 |   |       |   |   +---QuanLyNhanVien.jsx
 |   |       |   |   +---QuanLySanPham.jsx
+|   |       |   |   +---QuanLyTopping.jsx
 |   |       |   |   \---SecurityDashboard.jsx
 |   |       |   \---services
 |   |       |       +---adminTableService.js
@@ -372,8 +414,10 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |       +---ingredientCategoryService.js
 |   |       |       +---ingredientService.js
 |   |       |       +---productService.js
+|   |       |       +---productSizeService.js
 |   |       |       +---recipeService.js
-|   |       |       \---staffService.js
+|   |       |       +---staffService.js
+|   |       |       \---toppingService.js
 |   |       +---auth
 |   |       |   +---AdminLogin.jsx
 |   |       |   +---ChangePassword.jsx
@@ -385,6 +429,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |   |   +---CartPanel.jsx
 |   |       |   |   +---CategoryTabs.jsx
 |   |       |   |   +---PaymentPanel.jsx
+|   |       |   |   +---ProductCustomizeModal.jsx
 |   |       |   |   \---ProductGrid.jsx
 |   |       |   +---layout
 |   |       |   |   \---LayoutCashier.jsx
@@ -392,6 +437,7 @@ D:\BaoCaoTotNghiep_2026\CaPheMinhHuu
 |   |       |   |   +---CashierPOS.jsx
 |   |       |   |   +---OrderDetail.jsx
 |   |       |   |   +---OrderList.jsx
+|   |       |   |   +---PaymentPage.jsx
 |   |       |   |   +---ShiftClose.jsx
 |   |       |   |   +---ShiftOpen.jsx
 |   |       |   |   +---ShiftReport.jsx

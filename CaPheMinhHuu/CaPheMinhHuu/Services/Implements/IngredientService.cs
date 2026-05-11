@@ -1,4 +1,5 @@
 
+using CaPheMinhHuu.Data;
 using CaPheMinhHuu.DTOs.Ingredient;
 using CaPheMinhHuu.DTOs.Order;
 using CaPheMinhHuu.Interfaces;
@@ -15,6 +16,7 @@ namespace CaPheMinhHuu.Services.Implements
         private readonly IIngredientUnitRepository _unitRepo;
         private readonly IInventoryBatchRepository _batchRepo;
         private readonly IRecipeRepository _recipeRepo;
+        private readonly ApplicationDbContext _context;
         
         private readonly ILogger<IngredientService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -25,6 +27,7 @@ namespace CaPheMinhHuu.Services.Implements
             IIngredientUnitRepository unitRepo,
             IInventoryBatchRepository batchRepo,
             IRecipeRepository recipeRepo,
+            ApplicationDbContext context,
             ILogger<IngredientService> logger,
             IHttpContextAccessor httpContextAccessor,
             IHubContext<AppHub> hubContext)
@@ -33,6 +36,7 @@ namespace CaPheMinhHuu.Services.Implements
             _unitRepo = unitRepo;
             _batchRepo = batchRepo;
             _recipeRepo = recipeRepo;
+            _context = context;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _hubContext = hubContext;
@@ -165,14 +169,18 @@ namespace CaPheMinhHuu.Services.Implements
 
         private Task<IngredientViewDto> MapToViewDto(Ingredient ingredient)
         {
-            var units = ingredient.Units ?? new List<IngredientUnit>();
+            var units = (ingredient.Units ?? new List<IngredientUnit>())
+                .Where(u => !u.IsDeleted)
+                .ToList();
             var allBatches = (ingredient.Batches ?? new List<InventoryBatch>())
                 .Where(b => !b.IsDeleted)
                 .OrderByDescending(b => b.ImportDate)  // Mới nhất trước
                 .ToList();
 
             // Tồn kho chỉ tính batch còn hàng
-            var currentStock = allBatches.Sum(b => b.CurrentQuantity);
+            var currentStock = allBatches
+                .Where(b => !b.ExpiryDate.HasValue || b.ExpiryDate.Value > DateTime.Now)
+                .Sum(b => b.CurrentQuantity);
 
             var stockStatus = "OK";
             if (currentStock <= 0) stockStatus = "Out";
@@ -212,7 +220,9 @@ namespace CaPheMinhHuu.Services.Implements
                     DaysUntilExpiry = b.ExpiryDate.HasValue
                         ? (int)(b.ExpiryDate.Value - DateTime.Now).TotalDays : null,
                     ExpiryStatus = GetExpiryStatus(b.ExpiryDate),
-                    CreatedBy = b.CreatedBy ?? "Admin"
+                    CreatedBy = b.CreatedBy,
+                    PurchaseUnitName = b.PurchaseUnit?.UnitName,
+                    PurchaseQuantity = b.PurchaseQuantity
                 }).ToList(),
                 CreatedDate = ingredient.CreatedDate,
                 UpdatedDate = ingredient.UpdatedDate
@@ -326,10 +336,12 @@ namespace CaPheMinhHuu.Services.Implements
                 var recipes = await _recipeRepo.GetByProductIdAsync(item.ProductId);
                 foreach (var recipe in recipes)
                 {
-                    var quantityToRestore = recipe.QuantityRequired * item.Quantity;
+                    // Symmetric với DeductStock: restore đúng lượng đã trừ (bao gồm YieldFactor)
+                    var yfR = recipe.YieldFactor > 0 ? recipe.YieldFactor : 1.0m;
+                    var quantityToRestore = (recipe.QuantityRequired / yfR) * item.Quantity * item.SizeMultiplier;
                     // Lấy batch gần nhất (nhập mới nhất) để hoàn vào
                     var batches = await _batchRepo.GetAvailableFIFOAsync(recipe.IngredientId);
-                    var targetBatch = batches.LastOrDefault(); // LIFO: hoàn vào lô cuối
+                    var targetBatch = batches.FirstOrDefault(); // FIFO: hoàn vào lô cũ nhất
                     if (targetBatch != null)
                     {
                         targetBatch.CurrentQuantity += quantityToRestore;
@@ -340,33 +352,136 @@ namespace CaPheMinhHuu.Services.Implements
             _logger.LogInformation("Hoàn kho cho {Count} sản phẩm sau khi hủy đơn", items.Count);
         }
 
+        // ========== UNIT MANAGEMENT ==========
+
+        public async Task<IngredientUnitViewDto> AddUnitAsync(int ingredientId, AddIngredientUnitDto dto)
+        {
+            // 1. Validate ingredient tồn tại
+            var ingredient = await _ingredientRepo.GetByIdAsync(ingredientId);
+            if (ingredient == null)
+                throw new KeyNotFoundException($"Không tìm thấy nguyên liệu #{ingredientId}");
+
+            // 2. Guard: không được trùng tên BaseUnit
+            if (dto.UnitName.Trim().Equals(ingredient.BaseUnit.Trim(), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Tên đơn vị không được trùng với BaseUnit '{ingredient.BaseUnit}'");
+
+            // 3. Guard: không được trùng tên unit đang active
+            var existingUnits = await _unitRepo.GetByIngredientIdAsync(ingredientId);
+            if (existingUnits.Any(u => u.UnitName.Trim().Equals(dto.UnitName.Trim(), StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"Đơn vị '{dto.UnitName}' đã tồn tại cho nguyên liệu này");
+
+            // 4. Tạo unit mới — IsBaseUnit luôn false
+            var unit = new IngredientUnit
+            {
+                IngredientId = ingredientId,
+                UnitName = dto.UnitName.Trim(),
+                ConversionRate = dto.ConversionRate,
+                IsBaseUnit = false
+            };
+
+            await _unitRepo.AddAsync(unit);
+            _logger.LogInformation("Thêm unit '{UnitName}' (×{Rate}) cho NL #{Id}",
+                unit.UnitName, unit.ConversionRate, ingredientId);
+
+            // 5. Map → DTO
+            return new IngredientUnitViewDto
+            {
+                Id = unit.Id,
+                UnitName = unit.UnitName,
+                ConversionRate = unit.ConversionRate,
+                IsBaseUnit = unit.IsBaseUnit
+            };
+        }
+
+        public async Task<bool> DeleteUnitAsync(int ingredientId, int unitId)
+        {
+            // 1. Validate unit tồn tại và thuộc đúng ingredient
+            var unit = await _unitRepo.GetByIdAsync(unitId);
+            if (unit == null || unit.IngredientId != ingredientId)
+                return false;
+
+            // 2. Guard: không được xóa BaseUnit
+            if (unit.IsBaseUnit)
+                throw new InvalidOperationException("Không thể xóa đơn vị cơ bản (BaseUnit)");
+
+            // 3. Soft delete
+            var result = await _unitRepo.DeleteAsync(unitId);
+            if (result)
+                _logger.LogInformation("Xóa unit #{UnitId} '{UnitName}' khỏi NL #{IngId}",
+                    unitId, unit.UnitName, ingredientId);
+
+            return result;
+        }
+
         // ========== BATCH MANAGEMENT ==========
 
         public async Task<InventoryBatchViewDto?> AddBatchAsync(int ingredientId, BatchCreateDto dto)
-
         {
+            // 1. Validate ingredient tồn tại
             var ingredient = await _ingredientRepo.GetByIdAsync(ingredientId);
             if (ingredient == null) return null;
 
             var batchCode = dto.BatchCode ?? GenerateBatchCode(ingredientId);
 
+            // 2. Tính CurrentQuantity và ImportPricePerBaseUnit
+            decimal currentQty = dto.Quantity;
+            decimal pricePerBase = dto.ImportPricePerBaseUnit;
+            int? purchaseUnitId = null;
+            decimal? purchaseQuantity = null;
+            string? purchaseUnitName = null;
+
+            if (dto.PurchaseUnitId.HasValue)
+            {
+                // Validate PurchaseUnit thuộc đúng ingredient
+                var units = await _unitRepo.GetByIngredientIdAsync(ingredientId);
+                var purchaseUnit = units.FirstOrDefault(u => u.Id == dto.PurchaseUnitId.Value);
+                if (purchaseUnit == null)
+                    throw new InvalidOperationException(
+                        $"Đơn vị nhập #{dto.PurchaseUnitId} không thuộc nguyên liệu này");
+
+                // Validate PurchaseQuantity
+                if (!dto.PurchaseQuantity.HasValue || dto.PurchaseQuantity.Value <= 0)
+                    throw new InvalidOperationException(
+                        "Cần nhập số lượng theo đơn vị nhập kho (PurchaseQuantity)");
+
+                // Guard ConversionRate > 0
+                var rate = purchaseUnit.ConversionRate > 0 ? purchaseUnit.ConversionRate : 1;
+
+                // Quy đổi về BaseUnit
+                currentQty = dto.PurchaseQuantity.Value * rate;
+                pricePerBase = dto.ImportPricePerBaseUnit / rate;
+
+                purchaseUnitId = purchaseUnit.Id;
+                purchaseQuantity = dto.PurchaseQuantity.Value;
+                purchaseUnitName = purchaseUnit.UnitName;
+            }
+
+            // 3. Tạo batch
             var batch = new InventoryBatch
             {
                 IngredientId = ingredientId,
                 BatchCode = batchCode,
-                CurrentQuantity = dto.Quantity,
-                InitialQuantity = dto.Quantity,
-                ImportPricePerBaseUnit = dto.ImportPricePerBaseUnit,
+                CurrentQuantity = currentQty,
+                InitialQuantity = currentQty,
+                ImportPricePerBaseUnit = pricePerBase,
                 ImportDate = dto.ImportDate,
                 ManufactureDate = dto.ManufactureDate,
                 ExpiryDate = dto.ExpiryDate,
                 LocationId = dto.LocationId,
+                PurchaseUnitId = purchaseUnitId,
+                PurchaseQuantity = purchaseQuantity,
                 CreatedBy = GetCurrentUserName()
             };
 
             await _batchRepo.AddAsync(batch);
-            _logger.LogInformation("Nhập lô {BatchCode} cho NL #{Id}, SL: {Qty}", batchCode, ingredientId, dto.Quantity);
+            _logger.LogInformation(
+                "Nhập lô {BatchCode} cho NL #{Id}, SL: {Qty} {Unit} = {BaseQty} {BaseUnit}",
+                batchCode, ingredientId,
+                purchaseQuantity ?? currentQty,
+                purchaseUnitName ?? ingredient.BaseUnit,
+                currentQty, ingredient.BaseUnit);
 
+            // 4. Map → DTO
             return new InventoryBatchViewDto
             {
                 Id = batch.Id,
@@ -379,7 +494,9 @@ namespace CaPheMinhHuu.Services.Implements
                 ExpiryDate = batch.ExpiryDate,
                 DaysUntilExpiry = batch.ExpiryDate.HasValue
                     ? (int)(batch.ExpiryDate.Value - DateTime.Now).TotalDays : null,
-                ExpiryStatus = GetExpiryStatus(batch.ExpiryDate)
+                ExpiryStatus = GetExpiryStatus(batch.ExpiryDate),
+                PurchaseUnitName = purchaseUnitName,
+                PurchaseQuantity = purchaseQuantity
             };
         }
 
@@ -424,8 +541,19 @@ namespace CaPheMinhHuu.Services.Implements
             if (dto.ManufactureDate.HasValue) batch.ManufactureDate = dto.ManufactureDate;
             if (dto.ExpiryDate.HasValue) batch.ExpiryDate = dto.ExpiryDate;
             if (dto.LocationId.HasValue) batch.LocationId = dto.LocationId;
+            if (dto.PurchaseUnitId.HasValue) batch.PurchaseUnitId = dto.PurchaseUnitId;
+            if (dto.PurchaseQuantity.HasValue) batch.PurchaseQuantity = dto.PurchaseQuantity;
 
             await _batchRepo.UpdateAsync(batch);
+
+            // Load PurchaseUnit name để trả về
+            string? purchaseUnitName = null;
+            if (batch.PurchaseUnitId.HasValue)
+            {
+                var units = await _unitRepo.GetByIngredientIdAsync(ingredientId);
+                purchaseUnitName = units
+                    .FirstOrDefault(u => u.Id == batch.PurchaseUnitId.Value)?.UnitName;
+            }
 
             return new InventoryBatchViewDto
             {
@@ -439,7 +567,9 @@ namespace CaPheMinhHuu.Services.Implements
                 ExpiryDate = batch.ExpiryDate,
                 DaysUntilExpiry = batch.ExpiryDate.HasValue
                     ? (int)(batch.ExpiryDate.Value - DateTime.Now).TotalDays : null,
-                ExpiryStatus = GetExpiryStatus(batch.ExpiryDate)
+                ExpiryStatus = GetExpiryStatus(batch.ExpiryDate),
+                PurchaseUnitName = purchaseUnitName,
+                PurchaseQuantity = batch.PurchaseQuantity
             };
         }
 
@@ -450,31 +580,77 @@ namespace CaPheMinhHuu.Services.Implements
 
             return await _batchRepo.DeleteAsync(batchId);
         }
+
+        public async Task<InventoryBatchViewDto?> DisposeBatchAsync(int ingredientId, int batchId)
+        {
+            var ingredient = await _context.Ingredients
+                .Include(i => i.Batches)
+                .FirstOrDefaultAsync(i => i.Id == ingredientId && !i.IsDeleted);
+            if (ingredient == null) return null;
+
+            var batch = ingredient.Batches.FirstOrDefault(b => b.Id == batchId && !b.IsDeleted);
+            if (batch == null) return null;
+
+            batch.CurrentQuantity = 0;
+            batch.UpdatedDate = DateTime.Now;
+            
+            await _context.SaveChangesAsync();
+
+            return new InventoryBatchViewDto
+            {
+                Id = batch.Id,
+                BatchCode = batch.BatchCode,
+                CurrentQuantity = batch.CurrentQuantity,
+                InitialQuantity = batch.InitialQuantity,
+                ImportPricePerBaseUnit = batch.ImportPricePerBaseUnit,
+                ImportDate = batch.ImportDate,
+                ManufactureDate = batch.ManufactureDate,
+                ExpiryDate = batch.ExpiryDate,
+                DaysUntilExpiry = batch.ExpiryDate.HasValue
+                    ? (int)(batch.ExpiryDate.Value - DateTime.Now).TotalDays : null,
+                ExpiryStatus = GetExpiryStatus(batch.ExpiryDate),
+                CreatedBy = batch.CreatedBy,
+                PurchaseUnitName = null,
+                PurchaseQuantity = batch.PurchaseQuantity
+            };
+        }
         // ========== STOCK OPERATIONS ==========
-        public async Task<bool> DeductStockFIFOAsync(int ingredientId, decimal quantityNeeded)
+        /// <summary>
+        /// Internal FIFO deduct — mutate batch quantities, KHÔNG SaveChanges.
+        /// Caller chịu trách nhiệm SaveChanges + transaction.
+        /// Trả về list (batch, deductedQty) để caller log audit.
+        /// </summary>
+        private async Task<List<(InventoryBatch Batch, decimal Deducted)>> DeductStockFIFOInternalAsync(
+            int ingredientId, decimal quantityNeeded)
         {
             var batches = await _batchRepo.GetAvailableFIFOAsync(ingredientId);
-
             var totalAvailable = batches.Sum(b => b.CurrentQuantity);
             if (totalAvailable < quantityNeeded)
                 throw new InvalidOperationException(
                     $"Không đủ tồn kho cho nguyên liệu ID {ingredientId}. Cần: {quantityNeeded}, Có: {totalAvailable}");
+
+            var movements = new List<(InventoryBatch Batch, decimal Deducted)>();
             var remaining = quantityNeeded;
             foreach (var batch in batches)
             {
                 if (remaining <= 0) break;
-                if (batch.CurrentQuantity >= remaining)
-                {
-                    batch.CurrentQuantity -= remaining;
-                    remaining = 0;
-                }
-                else
-                {
-                    remaining -= batch.CurrentQuantity;
-                    batch.CurrentQuantity = 0;
-                   
-                }
+                var deducted = batch.CurrentQuantity >= remaining
+                    ? remaining
+                    : batch.CurrentQuantity;
+                batch.CurrentQuantity -= deducted;
+                remaining -= deducted;
+                movements.Add((batch, deducted));
             }
+            return movements;
+        }
+
+        /// <summary>
+        /// Public FIFO deduct — dùng cho standalone call (không cần audit log).
+        /// Tự SaveChanges + trigger LowStockAlert.
+        /// </summary>
+        public async Task<bool> DeductStockFIFOAsync(int ingredientId, decimal quantityNeeded)
+        {
+            var movements = await DeductStockFIFOInternalAsync(ingredientId, quantityNeeded);
             await _batchRepo.SaveChangesAsync();
 
             _logger.LogInformation("Trừ kho NL #{Id}: {Qty} đơn vị (FIFO)", ingredientId, quantityNeeded);
@@ -493,7 +669,6 @@ namespace CaPheMinhHuu.Services.Implements
                 _logger.LogWarning("LowStock Alert: {Name} còn {Qty} {Unit}",
                     ingredient.Name, totalRemaining, ingredient.BaseUnit);
             }
-
             return true;
         }
         public async Task<StockCheckResult> CheckStockForOrderAsync(List<OrderItemDto> items)
@@ -506,9 +681,11 @@ namespace CaPheMinhHuu.Services.Implements
 
                 foreach (var recipe in recipes)
                 {
-                    var needed = recipe.QuantityRequired * item.Quantity;
+                    // Chuẩn BOM: needed = (QuantityRequired / YieldFactor) × Quantity × SizeMultiplier
+                    // Guard YieldFactor > 0 để tránh DivideByZeroException
+                    var yf1 = recipe.YieldFactor > 0 ? recipe.YieldFactor : 1.0m;
+                    var needed = (recipe.QuantityRequired / yf1) * item.Quantity * item.SizeMultiplier;
 
-                    
                     var available = await _batchRepo.GetTotalStockAsync(recipe.IngredientId);
 
                     if (available < needed)
@@ -529,7 +706,12 @@ namespace CaPheMinhHuu.Services.Implements
 
             return result;
         }
-        public async Task DeductStockForOrderAsync(List<OrderItemDto> items)
+        /// <summary>
+        /// Deduct kho cho order — atomic: batch deduct + usage log trong cùng 1 transaction.
+        /// Nhận List<OrderItem> (entity) để có OrderItemId sau khi DB save.
+        /// </summary>
+        public async Task DeductStockForOrderAsync(
+            List<OrderItem> items, string orderCode, DateTime orderDate)
         {
             using var transaction = await _batchRepo.BeginTransactionAsync();
             try
@@ -537,11 +719,81 @@ namespace CaPheMinhHuu.Services.Implements
                 foreach (var item in items)
                 {
                     var recipes = await _recipeRepo.GetByProductIdAsync(item.ProductId);
-                    foreach (var recipe in recipes)
+                    foreach (var recipe in recipes.Where(r => r.IsActive && !r.IsDeleted))
                     {
-                        var needed = recipe.QuantityRequired * item.Quantity;
-                        await DeductStockFIFOAsync(recipe.IngredientId, needed);
+                        // Chuẩn BOM: needed = (QuantityRequired / YieldFactor) × Quantity × SizeMultiplier
+                        // Guard YieldFactor > 0 để tránh DivideByZeroException
+                        var yf2 = recipe.YieldFactor > 0 ? recipe.YieldFactor : 1.0m;
+                        var needed = (recipe.QuantityRequired / yf2) * item.Quantity * item.SizeMultiplier;
+                        // Deduct FIFO — không SaveChanges
+                        var movements = await DeductStockFIFOInternalAsync(recipe.IngredientId, needed);
+
+                        // Insert usage log — 1 row per batch movement (proportional split)
+                        foreach (var (batch, deducted) in movements)
+                        {
+                            _context.IngredientUsageLogs.Add(new IngredientUsageLog
+                            {
+                                OrderId         = item.OrderId,
+                                OrderItemId     = item.Id,
+                                OrderCode       = orderCode,
+                                OrderDate       = orderDate,
+                                BatchId         = batch.Id,
+                                BatchCode       = batch.BatchCode,
+                                BatchImportDate = batch.ImportDate,
+                                IngredientId    = recipe.IngredientId,
+                                IngredientName  = recipe.Ingredient?.Name ?? "",
+                                BaseUnit        = recipe.Ingredient?.BaseUnit ?? "",
+                                CostPerBaseUnit = batch.ImportPricePerBaseUnit,
+                                DeductedQty     = deducted,
+                                TotalCost       = Math.Round(deducted * batch.ImportPricePerBaseUnit, 2),
+                                TheoreticalQty  = deducted,
+                                Variance        = 0,
+                                RecipeVersion   = recipe.Version
+                            });
+                        }
+
+                        // LowStockAlert sau khi deduct
+                        var ingredient = await _ingredientRepo.GetByIdAsync(recipe.IngredientId);
+                        var totalRemaining = movements.Sum(m => m.Batch.CurrentQuantity);
+                        if (ingredient != null && totalRemaining <= ingredient.MinStock)
+                        {
+                            await _hubContext.Clients.Group("Broadcast").SendAsync("LowStockAlert", new
+                            {
+                                ingredientName = ingredient.Name,
+                                remaining      = totalRemaining,
+                                unit           = ingredient.BaseUnit
+                            });
+                        }
                     }
+                }
+                // Atomic commit: batch mutations + usage logs cùng lúc
+                await _batchRepo.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        public async Task DeductStockForToppingsAsync(List<OrderItemToppingDto> toppings)
+        {
+            if (toppings == null || !toppings.Any()) return;
+
+            using var transaction = await _batchRepo.BeginTransactionAsync();
+            try
+            {
+                foreach (var toppingDto in toppings)
+                {
+                    // Lấy Topping từ DB để biết IngredientId + PortionSize
+                    var topping = await _context.Toppings
+                        .FirstOrDefaultAsync(t => t.Id == toppingDto.ToppingId && !t.IsDeleted);
+
+                    if (topping == null || !topping.IngredientId.HasValue || topping.PortionSize <= 0)
+                        continue; // Topping không có kho → bỏ qua
+
+                    var needed = topping.PortionSize * toppingDto.Quantity;
+                    await DeductStockFIFOAsync(topping.IngredientId.Value, needed);
                 }
                 await transaction.CommitAsync();
             }
@@ -550,6 +802,30 @@ namespace CaPheMinhHuu.Services.Implements
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task RestoreStockForToppingsAsync(List<CaPheMinhHuu.Models.OrderItemTopping> toppings)
+        {
+            if (toppings == null || !toppings.Any()) return;
+
+            foreach (var orderItemTopping in toppings)
+            {
+                var topping = await _context.Toppings
+                    .FirstOrDefaultAsync(t => t.Id == orderItemTopping.ToppingId && !t.IsDeleted);
+
+                if (topping == null || !topping.IngredientId.HasValue || topping.PortionSize <= 0)
+                    continue;
+
+                var quantityToRestore = topping.PortionSize * orderItemTopping.Quantity;
+                var batches = await _batchRepo.GetAvailableFIFOAsync(topping.IngredientId.Value);
+                var targetBatch = batches.FirstOrDefault();
+                if (targetBatch != null)
+                {
+                    targetBatch.CurrentQuantity += quantityToRestore;
+                }
+            }
+            await _batchRepo.SaveChangesAsync();
+            _logger.LogInformation("Hoàn kho topping cho {Count} items", toppings.Count);
         }
     }
 }

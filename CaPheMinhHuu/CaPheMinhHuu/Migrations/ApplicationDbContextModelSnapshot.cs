@@ -309,6 +309,92 @@ namespace CaPheMinhHuu.Migrations
                     b.ToTable("IngredientCategories");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.IngredientUsageLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BaseUnit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BatchCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("BatchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("BatchImportDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("CostPerBaseUnit")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DeductedQty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IngredientName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecipeVersion")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TheoreticalQty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Variance")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("IngredientId");
+
+                    b.HasIndex("OrderDate");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("IngredientId", "OrderDate");
+
+                    b.HasIndex("OrderId", "IngredientId");
+
+                    b.ToTable("IngredientUsageLogs");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.LoginHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -380,6 +466,9 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OrderCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -439,6 +528,9 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("IceLevel")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -457,6 +549,21 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("SizeExtraPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SizeLabel")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("SizeMultiplier")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SugarLevel")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("ToppingTotal")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
@@ -467,6 +574,110 @@ namespace CaPheMinhHuu.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("OrderItems");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.OrderItemIngredientSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ActualDeducted")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("BaseUnit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IngredientName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("OrderItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("QuantityRequired")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("RecipeVersion")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SizeMultiplier")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("YieldFactor")
+                        .HasColumnType("decimal(5,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.HasIndex("OrderItemId", "IngredientId");
+
+                    b.ToTable("OrderItemIngredientSnapshots");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.OrderItemTopping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("OrderItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToppingId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToppingName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.HasIndex("ToppingId");
+
+                    b.ToTable("OrderItemToppings");
                 });
 
             modelBuilder.Entity("CaPheMinhHuu.Models.OtpCode", b =>
@@ -618,6 +829,51 @@ namespace CaPheMinhHuu.Migrations
                     b.ToTable("Products");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.ProductSize", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal>("PriceExtra")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RecipeMultiplier")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "Label")
+                        .IsUnique();
+
+                    b.ToTable("ProductSizes");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.Recipe", b =>
                 {
                     b.Property<int>("Id")
@@ -631,6 +887,11 @@ namespace CaPheMinhHuu.Migrations
 
                     b.Property<int>("IngredientId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -647,6 +908,16 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<decimal>("YieldFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(5, 4)")
+                        .HasDefaultValue(1.0m);
+
                     b.HasKey("Id");
 
                     b.HasIndex("IngredientId");
@@ -657,6 +928,108 @@ namespace CaPheMinhHuu.Migrations
                         .IsUnique();
 
                     b.ToTable("Recipes");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.RecipeVersion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ChangeReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChangedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductId", "IsCurrent");
+
+                    b.HasIndex("ProductId", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("RecipeVersions");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.RecipeVersionLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BaseUnit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IngredientName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("QuantityRequired")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("RecipeVersionId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitCostSnapshot")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("YieldFactor")
+                        .HasColumnType("decimal(5,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipeVersionId");
+
+                    b.HasIndex("RecipeVersionId", "IngredientId");
+
+                    b.ToTable("RecipeVersionLines");
                 });
 
             modelBuilder.Entity("CaPheMinhHuu.Models.RefreshToken", b =>
@@ -860,6 +1233,10 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<string>("RejectReason")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ShiftType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -925,6 +1302,52 @@ namespace CaPheMinhHuu.Migrations
                     b.ToTable("Tables");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.Topping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("IngredientId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("PortionSize")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("PortionUnit")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IngredientId");
+
+                    b.ToTable("Toppings");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -969,6 +1392,9 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<string>("GoogleId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("HourlyRate")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -1177,6 +1603,13 @@ namespace CaPheMinhHuu.Migrations
                     b.Property<DateTime?>("ManufactureDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("PurchaseQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int?>("PurchaseUnitId")
+                        .HasColumnType("int");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -1190,6 +1623,8 @@ namespace CaPheMinhHuu.Migrations
 
                     b.HasIndex("BatchCode")
                         .IsUnique();
+
+                    b.HasIndex("PurchaseUnitId");
 
                     b.HasIndex("IngredientId", "ExpiryDate");
 
@@ -1216,6 +1651,16 @@ namespace CaPheMinhHuu.Migrations
                         .IsRequired();
 
                     b.Navigation("Creator");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.IngredientUsageLog", b =>
+                {
+                    b.HasOne("InventoryBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Batch");
                 });
 
             modelBuilder.Entity("CaPheMinhHuu.Models.LoginHistory", b =>
@@ -1271,6 +1716,36 @@ namespace CaPheMinhHuu.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.OrderItemIngredientSnapshot", b =>
+                {
+                    b.HasOne("CaPheMinhHuu.Models.OrderItem", "OrderItem")
+                        .WithMany("IngredientSnapshots")
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OrderItem");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.OrderItemTopping", b =>
+                {
+                    b.HasOne("CaPheMinhHuu.Models.OrderItem", "OrderItem")
+                        .WithMany("Toppings")
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CaPheMinhHuu.Models.Topping", "Topping")
+                        .WithMany("OrderItemToppings")
+                        .HasForeignKey("ToppingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrderItem");
+
+                    b.Navigation("Topping");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.Payment", b =>
                 {
                     b.HasOne("CaPheMinhHuu.Models.Order", "Order")
@@ -1292,6 +1767,17 @@ namespace CaPheMinhHuu.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.ProductSize", b =>
+                {
+                    b.HasOne("CaPheMinhHuu.Models.Product", "Product")
+                        .WithMany("Sizes")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.Recipe", b =>
                 {
                     b.HasOne("Ingredient", "Ingredient")
@@ -1309,6 +1795,28 @@ namespace CaPheMinhHuu.Migrations
                     b.Navigation("Ingredient");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.RecipeVersion", b =>
+                {
+                    b.HasOne("CaPheMinhHuu.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.RecipeVersionLine", b =>
+                {
+                    b.HasOne("CaPheMinhHuu.Models.RecipeVersion", "RecipeVersion")
+                        .WithMany("Lines")
+                        .HasForeignKey("RecipeVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RecipeVersion");
                 });
 
             modelBuilder.Entity("CaPheMinhHuu.Models.RefreshToken", b =>
@@ -1368,6 +1876,16 @@ namespace CaPheMinhHuu.Migrations
                     b.Navigation("AreaNavigation");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.Topping", b =>
+                {
+                    b.HasOne("Ingredient", "Ingredient")
+                        .WithMany()
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Ingredient");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.User", b =>
                 {
                     b.HasOne("CaPheMinhHuu.Models.User", "Creator")
@@ -1407,7 +1925,14 @@ namespace CaPheMinhHuu.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("IngredientUnit", "PurchaseUnit")
+                        .WithMany()
+                        .HasForeignKey("PurchaseUnitId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("Ingredient");
+
+                    b.Navigation("PurchaseUnit");
                 });
 
             modelBuilder.Entity("CaPheMinhHuu.Models.Area", b =>
@@ -1432,14 +1957,33 @@ namespace CaPheMinhHuu.Migrations
                     b.Navigation("Payment");
                 });
 
+            modelBuilder.Entity("CaPheMinhHuu.Models.OrderItem", b =>
+                {
+                    b.Navigation("IngredientSnapshots");
+
+                    b.Navigation("Toppings");
+                });
+
             modelBuilder.Entity("CaPheMinhHuu.Models.Product", b =>
                 {
                     b.Navigation("Recipes");
+
+                    b.Navigation("Sizes");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.RecipeVersion", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("CaPheMinhHuu.Models.Table", b =>
                 {
                     b.Navigation("Orders");
+                });
+
+            modelBuilder.Entity("CaPheMinhHuu.Models.Topping", b =>
+                {
+                    b.Navigation("OrderItemToppings");
                 });
 
             modelBuilder.Entity("Ingredient", b =>

@@ -17,6 +17,8 @@ namespace CaPheMinhHuu.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal? TotalRevenue { get; set; }
         // PendingOpen, Open, Closed, Rejected
+        // Cashier | Kitchen
+        public string ShiftType { get; set; } = "Cashier";
         public string Status { get; set; } = "PendingOpen";
         public string? RejectReason { get; set; }
         // Navigation

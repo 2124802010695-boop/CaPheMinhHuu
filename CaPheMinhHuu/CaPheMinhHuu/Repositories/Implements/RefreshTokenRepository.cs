@@ -28,6 +28,15 @@ namespace CaPheMinhHuu.Repositories.Implements
             => await _context.RefreshTokens
                 .FirstOrDefaultAsync(r => r.Token == token);
 
+        public async Task<RefreshToken?> GetLatestActiveByUserIdAsync(int userId)
+            => await _context.RefreshTokens
+                .Include(r => r.User)
+                .Where(r => r.UserId == userId
+                    && r.RevokedAt == null
+                    && r.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(r => r.CreatedAt)
+                .FirstOrDefaultAsync();
+
         public async Task SaveChangesAsync()
             => await _context.SaveChangesAsync();
     }

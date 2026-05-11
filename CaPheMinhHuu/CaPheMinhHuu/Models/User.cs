@@ -49,6 +49,8 @@ namespace CaPheMinhHuu.Models
         public decimal? Salary { get; set; }  // Lương cơ bản
         [Column(TypeName = "decimal(5,2)")]
         public decimal? SalaryCoefficient { get; set; }  // Hệ số lương
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? HourlyRate { get; set; }  // Lương theo giờ (dùng để tính bảng lương)
         // ===== AUDIT =====
         public int? CreatedBy { get; set; }  // Admin tạo nhân viên
         

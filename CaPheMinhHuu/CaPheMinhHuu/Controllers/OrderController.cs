@@ -63,5 +63,13 @@ namespace CaPheMinhHuu.Controllers
             await _orderService.UpdateOrderStatusAsync(id, status);
             return Ok(new { message = "Cập nhật trạng thái thành công" });
         }
+        // PATCH: api/Order/5/pay
+        [Authorize(Roles = "Admin, Cashier")]
+        [HttpPatch("{id}/pay")]
+        public async Task<IActionResult> MarkAsPaid(int id)
+        {
+            await _orderService.MarkAsPaidAsync(id);
+            return Ok(new { message = "Đơn hàng đã được đánh dấu thanh toán" });
+        }
     }
 }
