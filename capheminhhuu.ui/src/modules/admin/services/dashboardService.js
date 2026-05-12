@@ -1,8 +1,8 @@
 import axios from "../../../common/utils/axiosCustomize";
 
-// GET: api/Dashboard/stats?chartDays=7
-export const getDashboardStats = (chartDays = 7) =>
-    axios.get('/Dashboard/stats', { params: { chartDays } });
+// GET: api/Dashboard/stats?period=today|7days|30days&chartDays=7
+export const getDashboardStats = (period = 'today', chartDays = 7) =>
+    axios.get('/Dashboard/stats', { params: { period, chartDays } });
 
 export const getDashboardRangeStats = (from, to) =>
     axios.get('/Dashboard/stats/range', {

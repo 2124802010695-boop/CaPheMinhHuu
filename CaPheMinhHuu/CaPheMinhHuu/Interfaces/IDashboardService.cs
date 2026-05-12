@@ -3,7 +3,7 @@ namespace CaPheMinhHuu.Interfaces
 {
     public interface IDashboardService
     {
-        Task<DashboardStatsDto> GetStatsAsync(int chartDays = 7);
+        Task<DashboardStatsDto> GetStatsAsync(string period = "today", int chartDays = 7);
         Task<RangeDashboardStatsDto> GetRangeStatsAsync(DateTime from, DateTime to);
 
         // D3 — WACC per ingredient

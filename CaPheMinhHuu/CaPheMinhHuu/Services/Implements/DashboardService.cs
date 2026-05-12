@@ -14,38 +14,77 @@ namespace CaPheMinhHuu.Services.Implements
             _logger = logger;
         }
 
-        public async Task<DashboardStatsDto> GetStatsAsync(int chartDays = 7)
+        public async Task<DashboardStatsDto> GetStatsAsync(string period = "today", int chartDays = 7)
         {
-            chartDays = Math.Clamp(chartDays, 1, 30);
-            var today        = DateTime.Today;
-            var chartStart   = today.AddDays(-chartDays + 1);
+            var today = DateTime.Today;
+            DateTime from, to, prevFrom, prevTo;
+
+            to = today.AddDays(1).AddTicks(-1);
+            switch (period.ToLower())
+            {
+                case "7days":
+                    from     = today.AddDays(-6);
+                    prevFrom = from.AddDays(-7);
+                    prevTo   = from.AddTicks(-1);
+                    break;
+                case "30days":
+                    from     = today.AddDays(-29);
+                    prevFrom = from.AddDays(-30);
+                    prevTo   = from.AddTicks(-1);
+                    break;
+                default: // today
+                    from     = today;
+                    prevFrom = today.AddDays(-1);
+                    prevTo   = today.AddTicks(-1);
+                    break;
+            }
+
+            // --- Existing repo calls (dates updated to use from/to) ---
+            var currentRevenue  = await _dashboardRepo.GetRevenueSumAsync(from, to);
+            var totalOrders     = await _dashboardRepo.GetOrderCountAsync(from, to);
+            var pendingOrders   = await _dashboardRepo.GetPendingOrderCountAsync();
+            var lowStock        = await _dashboardRepo.GetLowStockItemsAsync();
+            var topProducts     = await _dashboardRepo.GetTopProductsAsync(from, to, 10);
+            var revenueByDay    = await _dashboardRepo.GetRevenueByDayAsync(from, to);
+            var revenueByHour   = await _dashboardRepo.GetRevenueByHourAsync(today);
+            var cancelRate      = await _dashboardRepo.GetCancellationRateAsync(from, to);
+            var byPayment       = await _dashboardRepo.GetRevenueByPaymentMethodAsync(from, to);
+            var topToppings     = await _dashboardRepo.GetTopToppingsAsync(from, to);
+
+            // Staff summary: month-level for today, range for 7/30days
+            var staffSummary = period.ToLower() == "today"
+                ? await _dashboardRepo.GetStaffShiftSummaryAsync(today.Month, today.Year)
+                : await _dashboardRepo.GetStaffShiftSummaryByRangeAsync(from, to);
+
+            // --- New repo calls ---
+            var statusBreakdown   = await _dashboardRepo.GetOrderCountByStatusAsync(from, to);
+            var revenueByCategory = await _dashboardRepo.GetRevenueByCategoryAsync(from, to);
+            var newCustomers      = await _dashboardRepo.GetNewCustomerCountAsync(from, to);
+            var couponUsed        = await _dashboardRepo.GetCouponUsedCountAsync(from, to);
+            var avgProcessing     = await _dashboardRepo.GetAvgOrderProcessingMinutesAsync(from, to);
+            var prevRevenue       = await _dashboardRepo.GetRevenueSumAsync(prevFrom, prevTo);
+
+            // Delta % vs previous period
+            var delta = prevRevenue == 0 ? 0m
+                : Math.Round((currentRevenue - prevRevenue) / prevRevenue * 100, 1);
+
+            // Week/Month still useful as context (keep for backward compat)
             var startOfWeek  = today.AddDays(-(int)today.DayOfWeek + 1);
             var startOfMonth = new DateTime(today.Year, today.Month, 1);
-
-            var todayRevenue  = await _dashboardRepo.GetRevenueSumAsync(today, today);
-            var todayOrders   = await _dashboardRepo.GetOrderCountAsync(today, today);
-            var pendingOrders = await _dashboardRepo.GetPendingOrderCountAsync();
-            var weekRevenue   = await _dashboardRepo.GetRevenueSumAsync(startOfWeek, today);
-            var monthRevenue  = await _dashboardRepo.GetRevenueSumAsync(startOfMonth, today);
-            var lowStock      = await _dashboardRepo.GetLowStockItemsAsync();
-            var topProducts   = await _dashboardRepo.GetTopProductsAsync(startOfMonth, today);
-            var revenueByDay  = await _dashboardRepo.GetRevenueByDayAsync(chartStart, today);
-            var revenueByHour = await _dashboardRepo.GetRevenueByHourAsync(today);
-            var staffSummary  = await _dashboardRepo.GetStaffShiftSummaryAsync(today.Month, today.Year);
-            var cancelRate    = await _dashboardRepo.GetCancellationRateAsync(startOfMonth, today);
-            var byPayment     = await _dashboardRepo.GetRevenueByPaymentMethodAsync(startOfMonth, today);
-            var topToppings   = await _dashboardRepo.GetTopToppingsAsync(startOfMonth, today);
+            var weekRevenue  = await _dashboardRepo.GetRevenueSumAsync(startOfWeek, to);
+            var monthRevenue = await _dashboardRepo.GetRevenueSumAsync(startOfMonth, to);
 
             _logger.LogInformation(
-                "Dashboard stats — Revenue: {R}đ, Orders: {O}, Pending: {P}, LowStock: {L}",
-                todayRevenue, todayOrders, pendingOrders, lowStock.Count);
+                "Dashboard stats [{Period}] — Revenue: {R}đ, Orders: {O}, Pending: {P}, LowStock: {L}, Delta: {D}%",
+                period, currentRevenue, totalOrders, pendingOrders, lowStock.Count, delta);
 
             return new DashboardStatsDto
             {
-                TodayRevenue           = todayRevenue,
+                // Existing fields (backward compat)
+                TodayRevenue           = currentRevenue,
                 WeekRevenue            = weekRevenue,
                 MonthRevenue           = monthRevenue,
-                TodayOrders            = todayOrders,
+                TodayOrders            = totalOrders,
                 PendingOrders          = pendingOrders,
                 LowStockCount          = lowStock.Count,
                 LowStockItems          = lowStock,
@@ -56,6 +95,20 @@ namespace CaPheMinhHuu.Services.Implements
                 CancellationRate       = cancelRate,
                 RevenueByPaymentMethod = byPayment,
                 TopToppings            = topToppings,
+
+                // New fields
+                PreviousPeriodRevenue  = prevRevenue,
+                RevenueDeltaPercent    = delta,
+                AvgProcessingMinutes   = avgProcessing,
+                NewCustomerCount       = newCustomers,
+                CouponUsedCount        = couponUsed,
+                PreparingOrders        = statusBreakdown.GetValueOrDefault("Preparing"),
+                ReadyOrders            = statusBreakdown.GetValueOrDefault("Ready"),
+                ServedOrders           = statusBreakdown.GetValueOrDefault("Served"),
+                CompletedOrders        = statusBreakdown.GetValueOrDefault("Completed"),
+                CancelledOrders        = statusBreakdown.GetValueOrDefault("Cancelled"),
+                RevenueByCategory      = revenueByCategory,
+                EstimatedSalaryTotal   = 0, // TODO: cần thêm HourlyRate vào StaffShiftSummaryDto
             };
         }
 

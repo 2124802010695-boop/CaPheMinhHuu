@@ -1,17 +1,26 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import PrintableReport from '../components/PrintableReport';
+import * as XLSX from 'xlsx';
 import {
     Box, Container, Grid, Card, CardContent, Typography, Button,
     Chip, Skeleton, Alert, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, LinearProgress,
     Dialog, DialogTitle, DialogContent, DialogActions,
-    List, ListItem, ListItemText, TextField
+    List, ListItem, ListItemText, TextField, ButtonGroup, Stack
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PrintIcon from '@mui/icons-material/Print';
+import DownloadIcon from '@mui/icons-material/Download';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -56,14 +65,23 @@ function StatCard({ icon, label, value, sub, color, loading }) {
     );
 }
 
+
 export default function AdminDashboard() {
     const theme = useTheme();
 
-    // Today-centric stats
+    // Period selector + stats
+    const [period, setPeriod] = useState('today');
     const [stats, setStats] = useState(null);
     const [loadingStats, setLoadingStats] = useState(true);
     const [errorStats, setErrorStats] = useState(null);
     const [chartDays, setChartDays] = useState(30);
+
+    // Print ref + handler
+    const printRef = useRef(null);
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: `bao-cao-${period}-${new Date().toISOString().slice(0, 10)}`,
+    });
 
     // Range stats
     const [rangeStats, setRangeStats] = useState(null);
@@ -86,14 +104,14 @@ export default function AdminDashboard() {
         setLoadingStats(true);
         setErrorStats(null);
         try {
-            const data = await getDashboardStats(chartDays);
+            const data = await getDashboardStats(period, chartDays);
             setStats(data);
         } catch {
             setErrorStats('Không thể tải dữ liệu dashboard');
         } finally {
             setLoadingStats(false);
         }
-    }, [chartDays]);
+    }, [period, chartDays]);
 
     const fetchRangeStats = useCallback(async () => {
         setLoadingRange(true);
@@ -110,6 +128,89 @@ export default function AdminDashboard() {
 
     useEffect(() => { fetchStats(); }, [fetchStats]);
     useEffect(() => { fetchRangeStats(); }, []);  // chỉ chạy 1 lần khi mount
+
+    // === Export Excel ===
+    const exportToExcel = () => {
+        if (!stats) return;
+        const periodLabel = period === 'today' ? 'Hôm nay'
+            : period === '7days' ? '7 ngày qua' : '30 ngày qua';
+        const dateStr = new Date().toLocaleDateString('vi-VN');
+        const wb = XLSX.utils.book_new();
+
+        // Sheet 1 — Tổng quan
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+            ['BÁO CÁO KINH DOANH — Cà Phê Minh Hữu'],
+            ['Kỳ báo cáo:', periodLabel],
+            ['Ngày xuất:', dateStr],
+            [],
+            ['Chỉ số', 'Giá trị'],
+            ['Doanh thu', stats.todayRevenue],
+            ['So kỳ trước (%)', stats.revenueDeltaPercent],
+            ['Tổng đơn', stats.todayOrders],
+            ['Đang chờ', stats.pendingOrders],
+            ['Đang pha chế', stats.preparingOrders],
+            ['Sẵn sàng', stats.readyOrders],
+            ['Đã phục vụ', stats.servedOrders],
+            ['Hoàn thành', stats.completedOrders],
+            ['Đã hủy', stats.cancelledOrders],
+            ['TG xử lý TB (phút)', stats.avgProcessingMinutes?.toFixed(1)],
+            ['Khách mới', stats.newCustomerCount],
+            ['Voucher đã dùng', stats.couponUsedCount],
+            ['Tỷ lệ hủy (%)', stats.cancellationRate],
+        ]), 'Tổng quan');
+
+        // Sheet 2 — Doanh thu theo ngày
+        if (stats.revenueByDay?.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ['Ngày', 'Doanh thu', 'Số đơn', 'Tại bàn', 'Mang về'],
+                ...stats.revenueByDay.map(r => [r.date, r.revenue, r.orderCount, r.tableOrderCount, r.takeAwayCount])
+            ]), 'Doanh thu theo ngày');
+        }
+
+        // Sheet 3 — Top sản phẩm
+        if (stats.topProducts?.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ['Sản phẩm', 'Số lượng', 'Doanh thu'],
+                ...stats.topProducts.map(p => [p.productName, p.quantity, p.revenue])
+            ]), 'Top sản phẩm');
+        }
+
+        // Sheet 4 — Theo danh mục
+        if (stats.revenueByCategory?.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ['Danh mục', 'Doanh thu', 'Số đơn'],
+                ...stats.revenueByCategory.map(c => [c.categoryName, c.revenue, c.orderCount])
+            ]), 'Theo danh mục');
+        }
+
+        // Sheet 5 — Nhân viên
+        if (stats.staffShiftSummary?.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ['Nhân viên', 'Vai trò', 'Số ca', 'Giờ làm', 'Doanh thu'],
+                ...stats.staffShiftSummary.map(s => [s.fullName, s.role, s.totalShifts, s.totalHours?.toFixed(1), s.totalRevenue])
+            ]), 'Nhân viên');
+        }
+
+        // Sheet 6 — Kho sắp hết
+        if (stats.lowStockItems?.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ['Nguyên liệu', 'SKU', 'Tồn kho', 'Định mức tối thiểu', 'Đơn vị'],
+                ...stats.lowStockItems.map(i => [i.name, i.sku, i.currentStock, i.minStock, i.baseUnit])
+            ]), 'Kho sắp hết');
+        }
+
+        // Sheet 7 — Top toppings
+        if (stats.topToppings?.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ['Topping', 'Số lượng', 'Doanh thu'],
+                ...stats.topToppings.map(t => [t.toppingName, t.quantity, t.revenue])
+            ]), 'Top toppings');
+        }
+
+        XLSX.writeFile(wb, `bao-cao-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+
+
 
     // SignalR real-time refresh
     useEffect(() => {
@@ -163,13 +264,39 @@ export default function AdminDashboard() {
                             })}
                         </Typography>
                     </Box>
-                    <Button variant="outlined" startIcon={<RefreshIcon />}
-                        onClick={() => { fetchStats(); fetchRangeStats(); }}>
-                        Làm mới
-                    </Button>
+                    <Stack direction="row" spacing={1} className="no-print">
+                        <Button variant="outlined" startIcon={<RefreshIcon />}
+                            onClick={() => { fetchStats(); fetchRangeStats(); }}>
+                            Làm mới
+                        </Button>
+                        <Button variant="outlined" color="primary" startIcon={<DownloadIcon />}
+                            onClick={exportToExcel} disabled={!stats}>
+                            Xuất Excel
+                        </Button>
+                        <Button variant="outlined" color="success" startIcon={<PrintIcon />}
+                            onClick={handlePrint} disabled={!stats}>
+                            In báo cáo
+                        </Button>
+                    </Stack>
                 </Box>
 
+
+
                 {errorStats && <Alert severity="error" sx={{ mb: 3 }}>{errorStats}</Alert>}
+
+                {/* Period Selector */}
+                <Box display="flex" justifyContent="center" mb={4}>
+                    <ButtonGroup variant="outlined" size="large">
+                        {[{ label: 'Hôm nay', value: 'today' }, { label: '7 ngày', value: '7days' }, { label: '30 ngày', value: '30days' }].map(p => (
+                            <Button key={p.value}
+                                variant={period === p.value ? 'contained' : 'outlined'}
+                                onClick={() => setPeriod(p.value)}
+                                sx={{ px: 3, fontWeight: 700 }}>
+                                {p.label}
+                            </Button>
+                        ))}
+                    </ButtonGroup>
+                </Box>
 
                 {/* Stat Cards */}
                 <Grid container spacing={3} mb={4}>
@@ -199,6 +326,33 @@ export default function AdminDashboard() {
                             value={`${(stats?.cancellationRate || 0).toFixed(1)}%`}
                             color="#f59e0b" />
                     </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <StatCard icon={<AccessTimeIcon sx={{ color: '#6366f1' }} />}
+                            label="Thời gian xử lý TB" loading={loadingStats}
+                            value={`${(stats?.avgProcessingMinutes || 0).toFixed(1)} phút`}
+                            color="#6366f1" />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <StatCard icon={<PersonAddIcon sx={{ color: '#06b6d4' }} />}
+                            label="Khách mới" loading={loadingStats}
+                            value={stats?.newCustomerCount ?? '—'}
+                            color="#06b6d4" />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <StatCard icon={<ConfirmationNumberIcon sx={{ color: '#ec4899' }} />}
+                            label="Voucher đã dùng" loading={loadingStats}
+                            value={stats?.couponUsedCount ?? '—'}
+                            color="#ec4899" />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <StatCard icon={stats?.revenueDeltaPercent >= 0
+                                ? <TrendingUpIcon sx={{ color: '#10b981' }} />
+                                : <TrendingDownIcon sx={{ color: '#ef4444' }} />}
+                            label="% so kỳ trước" loading={loadingStats}
+                            value={`${stats?.revenueDeltaPercent > 0 ? '+' : ''}${(stats?.revenueDeltaPercent || 0).toFixed(1)}%`}
+                            sub={`Kỳ trước: ${fmtVND(stats?.previousPeriodRevenue || 0)}`}
+                            color={stats?.revenueDeltaPercent >= 0 ? '#10b981' : '#ef4444'} />
+                    </Grid>
                 </Grid>
 
                 {/* Low Stock Banner */}
@@ -225,6 +379,27 @@ export default function AdminDashboard() {
                                 </Button>
                             )}
                         </Box>
+                    </Paper>
+                )}
+
+                {/* Order Status Breakdown */}
+                {!loadingStats && (
+                    <Paper sx={{ p: 2, mb: 4, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
+                        <Typography variant="subtitle2" fontWeight={700} mb={1.5}>Trạng thái đơn hàng</Typography>
+                        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                            {[
+                                { label: 'Đang chờ', value: stats?.pendingOrders, color: 'warning' },
+                                { label: 'Đang pha', value: stats?.preparingOrders, color: 'info' },
+                                { label: 'Sẵn sàng', value: stats?.readyOrders, color: 'primary' },
+                                { label: 'Đã phục vụ', value: stats?.servedOrders, color: 'secondary' },
+                                { label: 'Hoàn thành', value: stats?.completedOrders, color: 'success' },
+                                { label: 'Đã hủy', value: stats?.cancelledOrders, color: 'error' },
+                            ].map(s => (
+                                <Chip key={s.label} label={`${s.label}: ${s.value ?? 0}`}
+                                    color={s.color} variant="outlined"
+                                    sx={{ fontWeight: 600, fontSize: 13, py: 2.5 }} />
+                            ))}
+                        </Stack>
                     </Paper>
                 )}
 
@@ -446,6 +621,22 @@ export default function AdminDashboard() {
                     </Paper>
                 )}
 
+                {/* Revenue by Category */}
+                {(stats?.revenueByCategory || []).length > 0 && (
+                    <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }}>
+                        <Typography variant="h6" fontWeight={700} mb={2}>Doanh thu theo danh mục</Typography>
+                        <ResponsiveContainer width="100%" height={Math.max(200, (stats.revenueByCategory.length) * 45)}>
+                            <BarChart data={stats.revenueByCategory.map(c => ({ name: c.categoryName, revenue: c.revenue, orders: c.orderCount }))} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                                <XAxis type="number" tickFormatter={fmtVND} tick={{ fontSize: 10 }} />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={120} />
+                                <RechartsTooltip formatter={(v, n) => [n === 'revenue' ? fmtFull(v) : v, n === 'revenue' ? 'Doanh thu' : 'Số đơn']} />
+                                <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                )}
+
             </Container>
 
             {/* Low Stock Dialog */}
@@ -470,6 +661,16 @@ export default function AdminDashboard() {
                     <Button onClick={() => setStockOpen(false)}>Đóng</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Hidden printable report — only rendered by react-to-print */}
+            <Box sx={{ display: 'none' }}>
+                <PrintableReport
+                    ref={printRef}
+                    stats={stats}
+                    rangeStats={rangeStats}
+                    period={period}
+                />
+            </Box>
         </Box>
     );
 }

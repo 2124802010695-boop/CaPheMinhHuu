@@ -424,11 +424,22 @@ namespace CaPheMinhHuu.Services.Implements
                 .SendAsync("OrderStatusUpdated", order.OrderCode, newStatus);
             
             // Đồng thời notify cho staff/admin (group Broadcast hoặc Operations)
-            await _hubContext.Clients.Group("Broadcast").SendAsync("OrderStatusUpdated", id, newStatus);
+            await _hubContext.Clients.Group("Broadcast").SendAsync("OrderStatusUpdated", order.OrderCode, newStatus);
         }
 
         public async Task<OrderViewDto> CreateGuestOrderAsync(GuestOrderCreateDto dto)
         {
+            // Giới hạn 1 đơn / 1 lần xác thực email
+            if (!string.IsNullOrEmpty(dto.Email))
+            {
+                var existingOrder = await _context.Orders
+                    .Where(o => o.Email == dto.Email && !o.IsDeleted)
+                    .FirstOrDefaultAsync();
+                if (existingOrder != null)
+                    throw new InvalidOperationException(
+                        "Mỗi lần xác thực chỉ được đặt 1 đơn. Vui lòng xác thực lại email để đặt đơn mới.");
+            }
+
             // Convert GuestOrderItemDto → OrderItemDto để reuse stock check
             var itemDtos = dto.Items.Select(i => new OrderItemDto
             {

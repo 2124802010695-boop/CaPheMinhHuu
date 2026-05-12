@@ -4,7 +4,7 @@ import {
     Box, Typography, Grid, Card, CardMedia, CardContent,
     Chip, TextField, InputAdornment, Badge, IconButton,
     Tabs, Tab, Skeleton, Fab, AppBar, Toolbar, useTheme,
-    CardActions, Container
+    CardActions, Container, Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
@@ -36,14 +36,18 @@ const Menu = () => {
 
     useEffect(() => {
         const fetchData = async () => {
+            console.log('[Menu] fetching products & categories...');
             try {
                 const [prods, cats] = await Promise.all([
                     getProductsAPI(),
                     getCategoriesAPI()
                 ]);
+                console.log('[Menu] products:', prods);
+                console.log('[Menu] categories:', cats);
                 setProducts(prods || []);
                 setCategories(cats || []);
-            } catch {
+            } catch (err) {
+                console.error('[Menu] error:', err);
                 toast.error('Không tải được menu');
             } finally {
                 setLoading(false);
@@ -136,12 +140,14 @@ const Menu = () => {
                     placeholder="Tìm kiếm món ngon..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon sx={{ color: theme.palette.primary.main }} />
-                            </InputAdornment>
-                        )
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ color: theme.palette.primary.main }} />
+                                </InputAdornment>
+                            ),
+                        },
                     }}
                     sx={{
                         '& .MuiOutlinedInput-root': {

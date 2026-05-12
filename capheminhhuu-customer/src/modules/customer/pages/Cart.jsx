@@ -54,11 +54,25 @@ const Cart = () => {
 
     const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
+    const isTokenValid = (token) => {
+        if (!token) return false;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.exp * 1000 > Date.now();
+        } catch { return false; }
+    };
+
     const handleOrder = () => {
         if (cart.length === 0) { toast.error('Giỏ hàng trống'); return; }
         const customerToken = localStorage.getItem('customerToken');
         const guestToken    = localStorage.getItem('guestToken');
-        if (!customerToken && !guestToken) {
+        const token = customerToken || guestToken;
+        if (!isTokenValid(token)) {
+            // Xóa token hết hạn trước khi redirect
+            localStorage.removeItem('customerToken');
+            localStorage.removeItem('guestToken');
+            localStorage.removeItem('guestEmail');
+            toast.error('Phiên đăng nhập đã hết hạn, vui lòng xác thực lại');
             navigate('/login', { state: { tableId, returnTo: '/cart' } });
             return;
         }

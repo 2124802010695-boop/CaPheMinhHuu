@@ -132,18 +132,20 @@ namespace CaPheMinhHuu.Repositories.Implements
         public async Task<double> GetAvgOrderProcessingMinutesAsync(DateTime from, DateTime to)
         {
             var orders = await _context.Orders
-                .Where(o => o.OrderDate.Date >= from
-                         && o.OrderDate.Date <= to
+                .Where(o => o.OrderDate.Date >= from.Date
+                         && o.OrderDate.Date <= to.Date
                          && o.Status == "Completed"
-                         && !o.IsDeleted)
+                         && !o.IsDeleted
+                         && o.UpdatedDate.HasValue)
                 .Select(o => new { o.OrderDate, o.UpdatedDate })
                 .ToListAsync();
 
             if (!orders.Any()) return 0;
 
-            return orders
-                .Where(o => o.UpdatedDate.HasValue)
-                .Average(o => (o.UpdatedDate!.Value - o.OrderDate).TotalMinutes);
+            var avg = orders
+                .Average(o => Math.Abs((o.UpdatedDate!.Value - o.OrderDate).TotalMinutes));
+
+            return avg < 0 ? 0 : Math.Round(avg, 1);
         }
 
         public async Task<decimal> GetCancellationRateAsync(DateTime from, DateTime to)
@@ -295,6 +297,90 @@ namespace CaPheMinhHuu.Repositories.Implements
                     MovementCount     = l.MovementCount
                 };
             }).OrderBy(x => x.IngredientName).ToList();
+        }
+
+        // D5 — Order count by status breakdown in period
+        public async Task<Dictionary<string, int>> GetOrderCountByStatusAsync(DateTime from, DateTime to)
+            => (await _context.Orders
+                .Where(o => o.OrderDate.Date >= from.Date && o.OrderDate.Date <= to.Date && !o.IsDeleted)
+                .GroupBy(o => o.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync())
+                .ToDictionary(x => x.Status, x => x.Count);
+
+        // D6 — Revenue by category in period
+        public async Task<List<RevenueByCategoryDto>> GetRevenueByCategoryAsync(DateTime from, DateTime to)
+            => await _context.OrderItems
+                .Where(oi => oi.Order.OrderDate.Date >= from.Date
+                          && oi.Order.OrderDate.Date <= to.Date
+                          && !oi.Order.IsDeleted
+                          && oi.Order.IsPaid
+                          && oi.Product.CategoryId != null)
+                .GroupBy(oi => new
+                {
+                    CategoryId   = oi.Product.CategoryId!.Value,
+                    CategoryName = oi.Product.Category!.Name
+                })
+                .Select(g => new RevenueByCategoryDto
+                {
+                    CategoryId   = g.Key.CategoryId,
+                    CategoryName = g.Key.CategoryName,
+                    Revenue      = g.Sum(x => (x.PriceAtOrder + x.SizeExtraPrice) * x.Quantity + x.ToppingTotal),
+                    OrderCount   = g.Select(x => x.OrderId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.Revenue)
+                .ToListAsync();
+
+        // D7 — New customer count in period (guest users từ OTP flow)
+        public async Task<int> GetNewCustomerCountAsync(DateTime from, DateTime to)
+            => await _context.Users
+                .CountAsync(u => u.Role == "Customer"
+                              && u.CreatedDate.Date >= from.Date
+                              && u.CreatedDate.Date <= to.Date
+                              && !u.IsDeleted);
+
+        // D8 — Coupon usage count in period
+        public async Task<int> GetCouponUsedCountAsync(DateTime from, DateTime to)
+            => await _context.UserCoupons
+                .CountAsync(uc => uc.IsUsed
+                               && uc.UsedAt.HasValue
+                               && uc.UsedAt.Value.Date >= from.Date
+                               && uc.UsedAt.Value.Date <= to.Date
+                               && !uc.IsDeleted);
+
+        // D9 — Staff shift summary by date range (replaces month/year variant)
+        public async Task<List<StaffShiftSummaryDto>> GetStaffShiftSummaryByRangeAsync(DateTime from, DateTime to)
+        {
+            var shifts = await _context.Shifts
+                .Include(s => s.User)
+                .Where(s => s.OpenTime.Date >= from.Date
+                         && s.OpenTime.Date <= to.Date
+                         && s.Status == "Closed"
+                         && !s.IsDeleted
+                         && s.User != null)
+                .ToListAsync();
+
+            return shifts
+                .GroupBy(s => s.UserId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return new StaffShiftSummaryDto
+                    {
+                        UserId        = g.Key,
+                        StaffCode     = first.User!.Username,
+                        FullName      = first.User!.FullName,
+                        Avatar        = first.User!.Avatar,
+                        Role          = first.User!.Role,
+                        TotalShifts   = g.Count(),
+                        TotalHours    = g.Sum(s => s.CloseTime.HasValue
+                            ? (decimal)(s.CloseTime.Value - s.OpenTime).TotalHours
+                            : 0),
+                        TotalRevenue  = g.Sum(s => s.TotalRevenue ?? 0),
+                        LastShiftDate = g.Max(s => s.OpenTime)
+                    };
+                })
+                .ToList();
         }
     }
 }

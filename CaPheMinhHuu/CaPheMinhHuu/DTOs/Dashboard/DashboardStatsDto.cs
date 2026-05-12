@@ -26,6 +26,28 @@ namespace CaPheMinhHuu.DTOs.Dashboard
         public List<RevenueByPaymentMethodDto> RevenueByPaymentMethod { get; set; } = new();
         public List<TopToppingDto> TopToppings { get; set; } = new();
         public decimal CancellationRate { get; set; }
+
+        // === Period Comparison ===
+        public decimal PreviousPeriodRevenue { get; set; }
+        public decimal RevenueDeltaPercent { get; set; }
+
+        // === Processing & Operations ===
+        public double AvgProcessingMinutes { get; set; }
+
+        // === Customer ===
+        public int NewCustomerCount { get; set; }
+        public int CouponUsedCount { get; set; }
+
+        // === Order Status Breakdown ===
+        public int PreparingOrders { get; set; }
+        public int ReadyOrders { get; set; }
+        public int ServedOrders { get; set; }
+        public int CompletedOrders { get; set; }
+        public int CancelledOrders { get; set; }
+
+        // === Salary & Category ===
+        public decimal EstimatedSalaryTotal { get; set; }
+        public List<RevenueByCategoryDto> RevenueByCategory { get; set; } = new();
     }
 
     // Top sản phẩm bán chạy

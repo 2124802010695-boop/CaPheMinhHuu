@@ -1,49 +1,46 @@
 import * as signalR from '@microsoft/signalr';
 
-const APP_HUB_URL = import.meta.env.VITE_HUB_URL || 'https://localhost:7280/appHub';
+const APP_HUB_URL = import.meta.env.VITE_HUB_URL || '/appHub';
 
 let connection = null;
+let currentOrderCode = null;
 
 const getToken = () =>
     localStorage.getItem('customerToken') ||
     localStorage.getItem('guestToken') || '';
 
-let currentOrderCode = null;
-
 export const startConnection = async (orderCode = '') => {
-    // Nếu orderCode thay đổi, stop connection cũ để tạo cái mới với group mới
-    if (connection && orderCode !== currentOrderCode) {
-        await stopConnection();
+    // Fix 1: cleanup bất kể orderCode có thay đổi hay không
+    if (connection) {
+        try { await connection.stop(); } catch {}
+        connection = null;
+        currentOrderCode = null;
     }
 
-    if (connection && (
-        connection.state === signalR.HubConnectionState.Connected ||
-        connection.state === signalR.HubConnectionState.Connecting ||
-        connection.state === signalR.HubConnectionState.Reconnecting
-    )) return connection;
-
-    if (!connection) {
-        currentOrderCode = orderCode;
-        let url = APP_HUB_URL;
-        if (orderCode) {
-            url += `?orderCode=${orderCode}`;
-        }
-
-        connection = new signalR.HubConnectionBuilder()
-            .withUrl(url, {
-                accessTokenFactory: () => getToken()
-            })
-            .withAutomaticReconnect([0, 2000, 5000, 10000])
-            .configureLogging(signalR.LogLevel.Warning)
-            .build();
+    currentOrderCode = orderCode;
+    let url = APP_HUB_URL;
+    if (orderCode) {
+        url += `?orderCode=${orderCode}`;
     }
+
+    // Fix 3: thêm transport fallback LongPolling
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl(url, {
+            accessTokenFactory: () => getToken(),
+            skipNegotiation: false,
+            transport: signalR.HttpTransportType.WebSockets |
+                       signalR.HttpTransportType.LongPolling
+        })
+        .withAutomaticReconnect([0, 2000, 5000, 10000])
+        .configureLogging(signalR.LogLevel.Warning)
+        .build();
 
     try {
         await connection.start();
-        console.log(`[SignalR Customer] Connected to AppHub ${orderCode ? `(Order: ${orderCode})` : ''}`);
+        console.log(`[SignalR] Connected${orderCode ? ` — Order: ${orderCode}` : ''}`);
         return connection;
     } catch (err) {
-        console.error('[SignalR Customer] Connection failed:', err);
+        console.error('[SignalR] Connection failed:', err);
         connection = null;
         currentOrderCode = null;
         throw err;
@@ -53,7 +50,7 @@ export const startConnection = async (orderCode = '') => {
 export const stopConnection = async () => {
     if (connection) {
         try { await connection.stop(); }
-        finally { 
+        finally {
             connection = null;
             currentOrderCode = null;
         }

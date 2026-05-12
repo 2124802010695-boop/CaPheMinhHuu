@@ -28,7 +28,8 @@ const CustomerLogin = () => {
     };
 
     const handleSendOtp = async () => {
-        if (!email.includes('@')) { toast.error('Email không hợp lệ'); return; }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) { toast.error('Email không hợp lệ'); return; }
         setLoading(true);
         try {
             await sendOtpAPI(email);

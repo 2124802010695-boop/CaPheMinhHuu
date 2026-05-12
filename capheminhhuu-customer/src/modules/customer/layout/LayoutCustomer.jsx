@@ -1,16 +1,15 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { Box } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 
 const LayoutCustomer = () => {
+    const theme = useTheme();
     return (
         <Box sx={{
             minHeight: '100vh',
-            bgcolor: '#FDF6F0',
-            fontFamily: '"Inter", sans-serif',
+            bgcolor: theme.palette.background.default,
+            fontFamily: theme.typography.fontFamily,
         }}>
-            <Toaster position="top-center" />
             <Outlet />
         </Box>
     );

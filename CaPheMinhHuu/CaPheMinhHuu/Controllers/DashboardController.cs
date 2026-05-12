@@ -16,11 +16,10 @@ namespace CaPheMinhHuu.Controllers
         }
 
         [HttpGet("stats")]
-        public async Task<IActionResult> GetStats([FromQuery] int chartDays = 7)
-        {
-            var stats = await _dashboardService.GetStatsAsync(chartDays);
-            return Ok(stats);
-        }
+        public async Task<IActionResult> GetStats(
+            [FromQuery] string period = "today",
+            [FromQuery] int chartDays = 7)
+            => Ok(await _dashboardService.GetStatsAsync(period, chartDays));
 
         [HttpGet("stats/range")]
         public async Task<IActionResult> GetRangeStats(

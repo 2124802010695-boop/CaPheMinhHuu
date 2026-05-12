@@ -43,5 +43,20 @@ namespace CaPheMinhHuu.Interfaces
 
         // D4 — Variance report
         Task<List<IngredientVarianceDto>> GetIngredientVarianceAsync(DateTime from, DateTime to);
+
+        // D5 — Order count by status breakdown
+        Task<Dictionary<string, int>> GetOrderCountByStatusAsync(DateTime from, DateTime to);
+
+        // D6 — Revenue by category
+        Task<List<RevenueByCategoryDto>> GetRevenueByCategoryAsync(DateTime from, DateTime to);
+
+        // D7 — New customer count in period
+        Task<int> GetNewCustomerCountAsync(DateTime from, DateTime to);
+
+        // D8 — Coupon usage count in period
+        Task<int> GetCouponUsedCountAsync(DateTime from, DateTime to);
+
+        // D9 — Staff shift summary by date range (thay thế month/year version)
+        Task<List<StaffShiftSummaryDto>> GetStaffShiftSummaryByRangeAsync(DateTime from, DateTime to);
     }
 }
