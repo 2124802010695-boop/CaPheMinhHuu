@@ -80,7 +80,7 @@ const QuanLyCaLamViec = () => {
         const token = localStorage.getItem('adminToken');
         if (!token) return;
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl(`https://localhost:7280/appHub?access_token=${token}`)
+            .withUrl(`${import.meta.env.VITE_HUB_URL}?access_token=${token}`)
             .withAutomaticReconnect()
             .configureLogging(signalR.LogLevel.Warning)
             .build();

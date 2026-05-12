@@ -41,7 +41,7 @@ const ProtectedRoute = ({
             // Verify token với backend — dùng axios raw để tránh interceptor gắn nhầm token
             try {
                 const tabId = tabManager.getTabId();
-                await axios.get('https://localhost:7280/api/Auth/check-token', {
+                axios.get(`${import.meta.env.VITE_API_URL}/Auth/check-token`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         'X-Tab-Id': tabId
