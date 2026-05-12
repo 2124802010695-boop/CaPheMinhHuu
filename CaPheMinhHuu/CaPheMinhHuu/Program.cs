@@ -35,8 +35,9 @@ builder.Services.AddCors(options =>
 });
 
 // DbContext
+var serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseMySql(connectionString, serverVersion));
 
 // HttpContextAccessor — Cho phép Service layer truy cập Request context (VD: build full image URL)
 builder.Services.AddHttpContextAccessor();
@@ -258,6 +259,31 @@ app.MapHub<ShiftHub>("/shiftHub");
 app.MapHub<AppHub>("/appHub");
 app.UseStaticFiles();
 
+// === DbSeeder — Tạo Admin mặc định nếu chưa có ===
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider
+        .GetRequiredService<ApplicationDbContext>();
 
+    if (!context.Users.Any(u => u.Username == "huuhanh"))
+    {
+        context.Users.Add(new CaPheMinhHuu.Models.User
+        {
+            Username        = "huuhanh",
+            PasswordHash    = BCrypt.Net.BCrypt.HashPassword("1"),
+            FullName        = "Nguyen Huu Hanh",
+            Role            = "Admin",
+            IsActive        = true,
+            IsFirstLogin    = false,
+            IsDeleted       = false,
+            CreatedDate     = DateTime.Now,
+            LoyaltyPoints   = 0,
+            IsEmailVerified = false,
+            IsPhoneVerified = false,
+            FailedLoginAttempts = 0
+        });
+        context.SaveChanges();
+    }
+}
 
 app.Run();

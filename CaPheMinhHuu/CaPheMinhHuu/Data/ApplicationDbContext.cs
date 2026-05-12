@@ -2,7 +2,7 @@ using CaPheMinhHuu.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
-using static Azure.Core.HttpHeader;
+
 
 namespace CaPheMinhHuu.Data
 {
@@ -137,7 +137,8 @@ namespace CaPheMinhHuu.Data
             // --- InventoryBatch (Lô hàng) ---
             modelBuilder.Entity<InventoryBatch>(entity =>
             {
-                entity.Property(e => e.RowVersion).IsRowVersion();
+                entity.Property(e => e.RowVersion).IsConcurrencyToken()
+                      .ValueGeneratedOnAddOrUpdate();
                 entity.Property(e => e.CurrentQuantity).HasPrecision(18, 3);
                 entity.Property(e => e.InitialQuantity).HasPrecision(18, 3);
                 entity.Property(e => e.ImportPricePerBaseUnit).HasPrecision(18, 2);
