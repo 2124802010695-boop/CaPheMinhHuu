@@ -2,7 +2,7 @@ import * as signalR from '@microsoft/signalr';
 
 // === SignalR Connection Utility — AppHub ===
 
-const APP_HUB_URL = 'https://localhost:7280/appHub';
+const APP_HUB_URL = import.meta.env.VITE_HUB_URL || 'https://localhost:7280/appHub';
 
 let connection = null;
 

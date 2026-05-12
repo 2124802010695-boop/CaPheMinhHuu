@@ -1,8 +1,10 @@
 import axios from "axios";
 import tabManager from './tabManager';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://localhost:7280/api';
+
 const instance = axios.create({
-    baseURL: 'https://localhost:7280/api',
+    baseURL: API_BASE,
 });
 
 // ======= HELPER: Xác định portal hiện tại =======
@@ -103,7 +105,7 @@ instance.interceptors.response.use(
 
             try {
                 // Gọi refresh token API (dùng axios gốc để tránh interceptor loop)
-                const response = await axios.post('https://localhost:7280/api/Auth/refresh-token', {
+                const response = await axios.post(`${API_BASE}/Auth/refresh-token`, {
                     refreshToken: refreshToken
                 });
 
